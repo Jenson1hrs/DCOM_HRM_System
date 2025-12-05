@@ -14,7 +14,9 @@ public class HRM_System {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here
+        System.out.println("HRM System Started");
+        System.out.println("Run server.HRMServer first!");
+        System.out.println("Then run client.HRStaffClient or client.HRClient");
     }
     
 }
