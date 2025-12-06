@@ -7,21 +7,32 @@ package remote;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import common.Employee;
+import common.FamilyMember;
 import java.util.List;
+import java.util.Map;
 
-public interface HRMService extends Remote{
+public interface HRMService extends Remote {
+    // === HR STAFF METHODS ===
     String registerEmployee(String firstName, String lastName, String icPassport) throws RemoteException;
     List<Employee> getAllEmployees() throws RemoteException;
     String generateYearlyReport(String employeeId) throws RemoteException;
-
+    
+    // === SIMPLIFIED LEAVE MANAGEMENT ===
+    List<Map<String, String>> getAllLeaveApplications() throws RemoteException;
+    boolean updateLeaveStatus(String applicationId, String status, String processedBy) throws RemoteException;
+    
+    // === EMPLOYEE METHODS ===
     Employee getEmployeeProfile(String employeeId) throws RemoteException;
     boolean updateEmployeeProfile(Employee employee) throws RemoteException;
     int checkLeaveBalance(String employeeId) throws RemoteException;
     String applyForLeave(String employeeId, int days, String reason) throws RemoteException;
-    String checkLeaveStatus(String employeeId, String applicationId) throws RemoteException;
+    List<Map<String, String>> getEmployeeLeaveHistory(String employeeId) throws RemoteException;
     
-    // Common Methods
+    // === FAMILY MEMBER METHODS ===
+    boolean addFamilyMember(String empId, FamilyMember member) throws RemoteException;
+    List<FamilyMember> getFamilyMembers(String empId) throws RemoteException;
+    boolean removeFamilyMember(String empId, String memberIc) throws RemoteException;
+    
+    // === AUTHENTICATION ===
     boolean authenticate(String userId, String password) throws RemoteException;
-
 }
-

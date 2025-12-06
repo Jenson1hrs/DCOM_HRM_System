@@ -11,16 +11,16 @@ public class HRMServer {
         public static void main(String[] args) {
         try {
             System.out.println("Starting RMI Registry...");
-            LocateRegistry.createRegistry(1099);
+            LocateRegistry.createRegistry(1098);
             
             System.out.println("Creating HRM Service...");
             HRMServiceImpl hrService = new HRMServiceImpl();
             
             System.out.println("Binding service to registry...");
-            Naming.rebind("rmi://localhost:1099/HRMService", hrService);
+            Naming.rebind("rmi://localhost:1098/HRMService", hrService);
             
             System.out.println("✅ HRM Server is ready!");
-            System.out.println("Service URL: rmi://localhost:1099/HRMService");
+            System.out.println("Service URL: rmi://localhost:1098/HRMService");
             
         } catch (Exception e) {
             System.err.println("Server error: " + e);

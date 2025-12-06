@@ -5,21 +5,35 @@
 package common;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Employee implements Serializable {
+    private static final long serialVersionUID = 1L; 
+    
     private String employeeId;
     private String firstName;
     private String lastName;
     private String icPassport;
+    private String email;
+    private String phone;
+    private String department;
+    private String position;
+    private String joinDate;
     private int leaveBalance;
     
-    // Constructor
+    private List<FamilyMember> familyMembers = new ArrayList<>();
+
     public Employee(String firstName, String lastName, String icPassport) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.icPassport = icPassport;
         this.leaveBalance = 20;
-    
+        this.joinDate = java.time.LocalDate.now().toString();
+    }    
+
+    public static long getSerialVersionUID() {
+        return serialVersionUID;
     }
 
     public String getEmployeeId() {
@@ -38,8 +52,32 @@ public class Employee implements Serializable {
         return icPassport;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public String getJoinDate() {
+        return joinDate;
+    }
+
     public int getLeaveBalance() {
         return leaveBalance;
+    }
+
+    public List<FamilyMember> getFamilyMembers() {
+        return familyMembers;
     }
 
     public void setEmployeeId(String employeeId) {
@@ -58,9 +96,63 @@ public class Employee implements Serializable {
         this.icPassport = icPassport;
     }
 
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
+
+    public void setJoinDate(String joinDate) {
+        this.joinDate = joinDate;
+    }
+
     public void setLeaveBalance(int leaveBalance) {
         this.leaveBalance = leaveBalance;
     }
     
-
+    public void setFamilyMembers(List<FamilyMember> familyMembers) {
+        this.familyMembers = familyMembers;
+    }
+    
+    // ⭐⭐⭐ THIS METHOD WAS MISSING! ⭐⭐⭐
+    public void addFamilyMember(FamilyMember member) {
+        familyMembers.add(member);
+    }
+    
+    // ⭐⭐⭐ THIS METHOD WAS MISSING! ⭐⭐⭐
+    public boolean removeFamilyMember(String icNumber) {
+        return familyMembers.removeIf(member -> 
+            member.getIcNumber() != null && 
+            member.getIcNumber().equals(icNumber)
+        );
+    }
+    
+    // ===== HELPER METHODS =====
+    @Override
+    public String toString() {
+        return employeeId + ": " + firstName + " " + lastName;
+    }
+    
+    public String getFamilyInfo() {
+        if (familyMembers.isEmpty()) {
+            return "No family members registered.";
+        }
+        
+        StringBuilder info = new StringBuilder();
+        for (FamilyMember member : familyMembers) {
+            info.append("- ").append(member.toString()).append("\n");
+        }
+        return info.toString();
+    } 
+    
 }
