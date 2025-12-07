@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Employee implements Serializable {
-    private static final long serialVersionUID = 1L; 
+    private static final long serialVersionUID = 2L; 
     
     private String employeeId;
     private String firstName;
@@ -21,6 +21,8 @@ public class Employee implements Serializable {
     private String position;
     private String joinDate;
     private int leaveBalance;
+    private double monthlySalary = 4500.00; // Default salary
+    private String bankAccount = "Not Set";
     
     private List<FamilyMember> familyMembers = new ArrayList<>();
 
@@ -76,6 +78,14 @@ public class Employee implements Serializable {
         return leaveBalance;
     }
 
+    public double getMonthlySalary() {
+        return monthlySalary;
+    }
+
+    public String getBankAccount() {
+        return bankAccount;
+    }
+    
     public List<FamilyMember> getFamilyMembers() {
         return familyMembers;
     }
@@ -123,13 +133,19 @@ public class Employee implements Serializable {
     public void setFamilyMembers(List<FamilyMember> familyMembers) {
         this.familyMembers = familyMembers;
     }
+
+    public void setMonthlySalary(double monthlySalary) {
+        this.monthlySalary = monthlySalary;
+    }
+
+    public void setBankAccount(String bankAccount) {
+        this.bankAccount = bankAccount;
+    }
     
-    // ⭐⭐⭐ THIS METHOD WAS MISSING! ⭐⭐⭐
     public void addFamilyMember(FamilyMember member) {
         familyMembers.add(member);
     }
     
-    // ⭐⭐⭐ THIS METHOD WAS MISSING! ⭐⭐⭐
     public boolean removeFamilyMember(String icNumber) {
         return familyMembers.removeIf(member -> 
             member.getIcNumber() != null && 

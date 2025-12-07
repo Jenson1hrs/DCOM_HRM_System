@@ -5,21 +5,36 @@
 package client;
 
 import remote.HRMService;
+import remote.PayrollService;  
 import common.Employee;
 import common.FamilyMember;
+import common.SalaryRecord;    
 import java.rmi.Naming;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class EmployeeMenu {
     public static void main(String[] args) {
         try {
+           System.setProperty("java.rmi.server.hostname", "127.0.0.1");
+            System.setProperty("java.rmi.server.useLocalHostname", "true");
+            
+            // Set timeout properties
+            System.setProperty("sun.rmi.transport.tcp.responseTimeout", "5000");
+            System.setProperty("sun.rmi.transport.proxy.connectTimeout", "5000");
+            
             Scanner scanner = new Scanner(System.in);
             
             System.out.println("=== EMPLOYEE CLIENT ===");
             System.out.println("Connecting to server...");
-            HRMService hrService = (HRMService) Naming.lookup("rmi://localhost:1098/HRMService");
+            
+            // Connect to HRM Service
+            HRMService hrService = (HRMService) Naming.lookup("rmi://127.0.0.1:1098/HRMService");
+            
+            System.out.println("✅ Connected to HRM Service!");
             
             // Authentication
             System.out.print("\nEmployee ID: ");
@@ -35,6 +50,10 @@ public class EmployeeMenu {
             
             System.out.println("✅ Login successful!\n");
             
+            // Connect to Payroll Service
+            PayrollService payrollService = (PayrollService) Naming.lookup("rmi://127.0.0.1:1098/PayrollService");
+            System.out.println("✅ Connected to Payroll Service!");
+            
             boolean running = true;
             while (running) {
                 System.out.println("=== EMPLOYEE MENU ===");
@@ -44,7 +63,8 @@ public class EmployeeMenu {
                 System.out.println("4. Apply for Leave");
                 System.out.println("5. Check Leave Status");
                 System.out.println("6. Manage Family Members");
-                System.out.println("7. Exit");
+                System.out.println("7. Salary & Payment"); 
+                System.out.println("8. Exit");
                 System.out.print("Choose option: ");
                 
                 int choice = scanner.nextInt();
@@ -213,7 +233,10 @@ public class EmployeeMenu {
                         }
                         break;
                         
-                    case 7: // Exit
+                    case 7:   //SALARY & PAYMENT MENU       
+                        handleSalaryMenu(employeeId, hrService, payrollService, scanner); 
+                        
+                    case 8: // Exit
                         running = false;
                         System.out.println("👋 Goodbye!");
                         break;
@@ -235,4 +258,127 @@ public class EmployeeMenu {
             e.printStackTrace();
         }
     }
+
+    // ===== NEW METHOD: SALARY MENU HANDLER =====
+    private static void handleSalaryMenu(String empId, HRMService hrService, 
+                                         PayrollService payrollService, Scanner scanner) {
+        try {
+            boolean inSalaryMenu = true;
+            while (inSalaryMenu) {
+                System.out.println("\n=== SALARY & PAYMENT ===");
+                System.out.println("1. Check Current Month Salary");
+                System.out.println("2. View Salary History");
+                System.out.println("3. Update Bank Account Details");
+                System.out.println("4. Back to Main Menu");
+                System.out.print("Choose option: ");
+                
+                int salaryChoice = scanner.nextInt();
+                scanner.nextLine(); // Consume newline
+                
+                switch (salaryChoice) {
+                    case 1: // Check Current Month Salary
+                        System.out.println("\n--- Current Month Salary ---");
+                        SalaryRecord currentSalary = payrollService.getMyCurrentSalary(empId);
+                        
+                        if (currentSalary != null) {
+                            System.out.println("Month: " + currentSalary.getFormattedMonth());
+                            System.out.println("Base Salary: RM" + String.format("%.2f", currentSalary.getBaseSalary()));
+                            System.out.println("Working Days: " + currentSalary.getWorkingDays() + "/22");
+                            System.out.println("Paid Leave Days: " + currentSalary.getPaidLeaveDays());
+                            System.out.println("Unpaid Leave Days: " + currentSalary.getUnpaidLeaveDays());
+                            System.out.println("Deductions: RM" + String.format("%.2f", currentSalary.getDeductions()));
+                            System.out.println("Net Salary: RM" + String.format("%.2f", currentSalary.getNetSalary()));
+                            System.out.println("Payment Status: " + currentSalary.getPaymentStatus());
+                            
+                            if (currentSalary.getPaymentDate() != null) {
+                                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                                System.out.println("Paid on: " + sdf.format(currentSalary.getPaymentDate()));
+                            }
+                        } else {
+                            System.out.println("❌ No salary record found for current month.");
+                        }
+                        break;
+                        
+                    case 2: // View Salary History
+                        System.out.println("\n--- Salary History ---");
+                        List<SalaryRecord> history = payrollService.getMySalaryHistory(empId);
+                        
+                        if (history.isEmpty()) {
+                            System.out.println("No salary records found.");
+                        } else {
+                            System.out.println("═══════════════════════════════════════");
+                            for (int i = 0; i < history.size(); i++) {
+                                SalaryRecord record = history.get(i);
+                                System.out.println((i + 1) + ". " + record.getFormattedMonth());
+                                System.out.println("   Amount: RM" + String.format("%.2f", record.getNetSalary()));
+                                System.out.println("   Status: " + record.getPaymentStatus());
+                                System.out.println("───────────────────────────────────");
+                            }
+                            
+                            // Option to view details
+                            System.out.print("\nEnter number to view details (1-" + history.size() + ") or 0 to go back: ");
+                            int viewChoice = scanner.nextInt();
+                            scanner.nextLine();
+                            
+                            if (viewChoice > 0 && viewChoice <= history.size()) {
+                                SalaryRecord selected = history.get(viewChoice - 1);
+                                System.out.println("\n📋 Salary Details:");
+                                System.out.println("Month: " + selected.getFormattedMonth());
+                                System.out.println("Base Salary: RM" + String.format("%.2f", selected.getBaseSalary()));
+                                System.out.println("Working Days: " + selected.getWorkingDays());
+                                System.out.println("Paid Leave Days: " + selected.getPaidLeaveDays());
+                                System.out.println("Unpaid Leave Days: " + selected.getUnpaidLeaveDays());
+                                System.out.println("Deductions: RM" + String.format("%.2f", selected.getDeductions()));
+                                System.out.println("Net Salary: RM" + String.format("%.2f", selected.getNetSalary()));
+                                System.out.println("Status: " + selected.getPaymentStatus());
+                                
+                                if (selected.getPaymentDate() != null) {
+                                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                                    System.out.println("Paid on: " + sdf.format(selected.getPaymentDate()));
+                                    System.out.println("Processed by: " + selected.getProcessedBy());
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 3: // Update Bank Account
+                        System.out.println("\n--- Update Bank Account ---");
+                        
+                        // Get current employee profile to show current bank account
+                        Employee profile = hrService.getEmployeeProfile(empId);
+                        if (profile != null) {
+                            System.out.println("Current Bank Account: " + profile.getBankAccount());
+                        }
+                        
+                        System.out.print("Enter new bank account number: ");
+                        String newAccount = scanner.nextLine();
+                        
+                        boolean updated = payrollService.updateBankAccount(empId, newAccount);
+                        if (updated) {
+                            System.out.println("✅ Bank account updated successfully!");
+                        } else {
+                            System.out.println("❌ Failed to update bank account.");
+                        }
+                        break;
+                        
+                    case 4: // Back to Main Menu
+                        inSalaryMenu = false;
+                        System.out.println("Returning to main menu...");
+                        break;
+                        
+                    default:
+                        System.out.println("❌ Invalid option!");
+                }
+                
+                if (inSalaryMenu) {
+                    System.out.println("\nPress Enter to continue...");
+                    scanner.nextLine();
+                }
+            }
+            
+        } catch (Exception e) {
+            System.err.println("❌ Salary menu error: " + e.getMessage());
+        }
+    }
 }
+

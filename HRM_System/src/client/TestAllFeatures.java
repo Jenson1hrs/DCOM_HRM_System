@@ -14,7 +14,7 @@ public class TestAllFeatures {
         try {
             System.out.println("=== Testing All HRM Features ===\n");
             
-            HRMService service = (HRMService) Naming.lookup("rmi://localhost:1099/HRMService");
+            HRMService service = (HRMService) Naming.lookup("rmi://localhost:1098/HRMService");
             
             // 1. Test Authentication
             System.out.println("1. Testing Authentication:");

@@ -26,6 +26,10 @@ public interface HRMService extends Remote {
     boolean updateEmployeeProfile(Employee employee) throws RemoteException;
     int checkLeaveBalance(String employeeId) throws RemoteException;
     String applyForLeave(String employeeId, int days, String reason) throws RemoteException;
+    
+    // NEW METHOD: Apply for unpaid leave
+    String applyForUnpaidLeave(String employeeId, int days, String reason) throws RemoteException;
+    
     List<Map<String, String>> getEmployeeLeaveHistory(String employeeId) throws RemoteException;
     
     // === FAMILY MEMBER METHODS ===

@@ -5,13 +5,14 @@
 package server;
 
 import remote.HRMService;
+import remote.PayrollService;
 import common.Employee;          
 import common.FamilyMember;      
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.rmi.Naming;
 import java.util.*;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.text.SimpleDateFormat;
 import java.io.*; 
 
 public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
@@ -22,7 +23,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     // Separate map for family members
     private Map<String, List<FamilyMember>> familyMembers = new HashMap<>();
     
- public HRMServiceImpl() throws RemoteException {
+    public HRMServiceImpl() throws RemoteException {
         super();
         
         try {
@@ -47,6 +48,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             emp1.setDepartment("IT");
             emp1.setPosition("Software Developer");
             emp1.setJoinDate("2023-01-15");
+            emp1.setMonthlySalary(5000.00); // Set salary
+            emp1.setBankAccount("1234-5678-9012");
             employees.put("EMP001", emp1);
             familyMembers.put("EMP001", new ArrayList<>());
             
@@ -63,6 +66,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             emp2.setDepartment("HR");
             emp2.setPosition("HR Manager");
             emp2.setJoinDate("2022-03-10");
+            emp2.setMonthlySalary(6000.00); // Set salary
+            emp2.setBankAccount("9876-5432-1098");
             employees.put("EMP002", emp2);
             familyMembers.put("EMP002", new ArrayList<>());
             
@@ -78,13 +83,13 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             }
         }
         
-        System.out.println("\n✅ Server ready!");
+        System.out.println("\n✅ HRM Service ready!");
         System.out.println("   HR Login: hr / hr123");
         System.out.println("   Employee Login: EMP001 / password123");
         System.out.println("   Employee count: " + employees.size());
     }
     
-        // ===== FILE PERSISTENCE METHODS =====
+    // ===== FILE PERSISTENCE METHODS =====
     
     private void saveDataToFile() throws IOException {
         try (ObjectOutputStream oos = new ObjectOutputStream(
@@ -96,7 +101,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             allData.put("leaveApplications", leaveApplications);
             
             oos.writeObject(allData);
-            System.out.println("💾 Data saved to file: hrm_data.dat");
+            System.out.println("💾 HRM data saved to file: hrm_data.dat");
         }
     }
     
@@ -116,7 +121,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             familyMembers = (Map<String, List<FamilyMember>>) allData.get("familyMembers");
             leaveApplications = (Map<String, String>) allData.get("leaveApplications");
             
-            System.out.println("📂 Loaded saved data:");
+            System.out.println("📂 Loaded HRM data:");
             System.out.println("   Employees: " + employees.size());
             System.out.println("   Leave Applications: " + leaveApplications.size());
         }
@@ -132,6 +137,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         emp.setPhone("012-0000000");
         emp.setDepartment("New Hire");
         emp.setPosition("Trainee");
+        emp.setMonthlySalary(3000.00); // Default starting salary
+        emp.setBankAccount("Not set"); // Default bank account
         
         employees.put(empId, emp);
         familyMembers.put(empId, new ArrayList<>());
@@ -146,7 +153,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         return "✅ Employee registered!\n" +
                "   ID: " + empId + "\n" +
                "   Name: " + firstName + " " + lastName + "\n" +
-               "   Default password: password123";
+               "   Default password: password123\n" +
+               "   Default salary: RM3000.00";
     }
     
     @Override
@@ -172,6 +180,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         report.append("Department: ").append(emp.getDepartment()).append("\n");
         report.append("Position: ").append(emp.getPosition()).append("\n");
         report.append("Join Date: ").append(emp.getJoinDate()).append("\n");
+        report.append("Monthly Salary: RM").append(String.format("%.2f", emp.getMonthlySalary())).append("\n");
+        report.append("Bank Account: ").append(emp.getBankAccount()).append("\n");
         report.append("Leave Balance: ").append(emp.getLeaveBalance()).append(" days\n\n");
         
         // Family details
@@ -226,6 +236,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             employee.setFamilyMembers(existingFamily);
             
             employees.put(employee.getEmployeeId(), employee);
+            
+            // Auto-save
+            try {
+                saveDataToFile();
+            } catch (IOException e) {
+                System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+            }
+            
             return true;
         }
         return false;
@@ -237,6 +255,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         return (emp != null) ? emp.getLeaveBalance() : -1;
     }
     
+    // ===== UPDATED applyForLeave METHOD =====
     @Override
     public String applyForLeave(String employeeId, int days, String reason) throws RemoteException {
         Employee emp = employees.get(employeeId);
@@ -246,14 +265,76 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             String appId = "LV" + System.currentTimeMillis();
             leaveApplications.put(appId, employeeId + "|" + days + "|" + reason + "|Pending");
             emp.setLeaveBalance(emp.getLeaveBalance() - days);
+            
+            // SYNC WITH PAYROLL - Assume all leave is PAID (using leave balance)
+            try {
+                // Get current month
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
+                String currentMonth = sdf.format(new Date());
+                
+                // Connect to payroll service
+                PayrollService payrollService = (PayrollService) 
+                    Naming.lookup("rmi://localhost:1098/PayrollService");
+                
+                // Sync leave - using leave balance means it's PAID leave
+                payrollService.syncLeaveWithSalary(employeeId, currentMonth, days, true);
+                
+            } catch (Exception e) {
+                System.out.println("⚠️  Could not sync leave with payroll: " + e.getMessage());
+            }
+            
+            // Auto-save
+            try {
+                saveDataToFile();
+            } catch (IOException e) {
+                System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+            }
+            
             return "✅ Leave application submitted!\n" +
                    "   Application ID: " + appId + "\n" +
                    "   Days: " + days + "\n" +
-                   "   New Balance: " + emp.getLeaveBalance() + " days";
+                   "   New Balance: " + emp.getLeaveBalance() + " days\n" +
+                   "   Note: Leave will affect salary calculation for current month.";
         }
         return "❌ Insufficient leave balance!\n" +
                "   Requested: " + days + " days\n" +
                "   Available: " + emp.getLeaveBalance() + " days";
+    }
+    
+    // ===== NEW METHOD: Apply for unpaid leave =====
+    @Override
+    public String applyForUnpaidLeave(String employeeId, int days, String reason) throws RemoteException {
+        Employee emp = employees.get(employeeId);
+        if (emp == null) return "❌ Employee not found!";
+        
+        String appId = "ULV" + System.currentTimeMillis(); // ULV = Unpaid Leave
+        leaveApplications.put(appId, employeeId + "|" + days + "|" + reason + "|Unpaid|Pending");
+        
+        // SYNC WITH PAYROLL - false means UNPAID leave
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
+            String currentMonth = sdf.format(new Date());
+            
+            PayrollService payrollService = (PayrollService) 
+                Naming.lookup("rmi://localhost:1098/PayrollService");
+            
+            payrollService.syncLeaveWithSalary(employeeId, currentMonth, days, false);
+            
+        } catch (Exception e) {
+            System.out.println("⚠️  Could not sync unpaid leave with payroll: " + e.getMessage());
+        }
+        
+        // Auto-save
+        try {
+            saveDataToFile();
+        } catch (IOException e) {
+            System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+        }
+        
+        return "✅ Unpaid leave application submitted!\n" +
+               "   Application ID: " + appId + "\n" +
+               "   Days: " + days + "\n" +
+               "   Note: Unpaid leave will deduct from salary.";
     }
     
     // ===== FAMILY MEMBER METHODS =====
@@ -271,6 +352,13 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             familyMembers.put(empId, new ArrayList<>());
         }
         familyMembers.get(empId).add(member);
+        
+        // Auto-save
+        try {
+            saveDataToFile();
+        } catch (IOException e) {
+            System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+        }
         
         return true;
     }
@@ -292,6 +380,15 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         // Remove from our map
         boolean removedFromMap = familyMembers.get(empId)
             .removeIf(member -> member.getIcNumber().equals(memberIc));
+        
+        // Auto-save if any removal happened
+        if (removedFromEmployee || removedFromMap) {
+            try {
+                saveDataToFile();
+            } catch (IOException e) {
+                System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+            }
+        }
         
         return removedFromEmployee || removedFromMap;
     }
@@ -318,6 +415,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         
         return false;
     }
+    
     @Override
     public List<Map<String, String>> getAllLeaveApplications() throws RemoteException {
         List<Map<String, String>> allLeaves = new ArrayList<>();
@@ -359,6 +457,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             // Reconstruct with new status
             String newStatus = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + status + " by " + processedBy;
             leaveApplications.put(applicationId, newStatus);
+            
+            // Auto-save
+            try {
+                saveDataToFile();
+            } catch (IOException e) {
+                System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+            }
+            
             return true;
         }
 
@@ -385,5 +491,4 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
 
         return employeeLeaves;
     }
-    
 }
