@@ -5,10 +5,10 @@
 package client;
 
 import remote.HRMService;
-import remote.PayrollService;  // ADD THIS IMPORT
+import remote.PayrollService; 
 import common.Employee;
 import common.FamilyMember;
-import common.SalaryRecord;    // ADD THIS IMPORT
+import common.SalaryRecord;    
 import java.rmi.Naming;
 import java.util.List;
 import java.util.Scanner;

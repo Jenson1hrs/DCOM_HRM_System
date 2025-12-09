@@ -53,7 +53,7 @@ public class EmployeeMenu {
                 System.out.print("Email: ");
                 employeeId = scanner.nextLine();
             } else {
-                System.out.println("❌ Invalid option!");
+                System.out.println(" Invalid option!");
                 scanner.close();
                 return;
             }
@@ -62,7 +62,7 @@ public class EmployeeMenu {
             String password = scanner.nextLine();
 
             if (!hrService.authenticate(employeeId, password)) {
-                System.out.println("❌ Login failed! Invalid credentials.");
+                System.out.println(" Login failed! Invalid credentials.");
                 scanner.close();
                 return;
             }
@@ -150,13 +150,13 @@ public class EmployeeMenu {
                         String confirmPass = scanner.nextLine();
 
                         if (!newPass.equals(confirmPass)) {
-                            System.out.println("❌ New passwords don't match!");
+                            System.out.println(" New passwords don't match!");
                         } else if (newPass.length() < 6) {
-                            System.out.println("❌ Password must be at least 6 characters!");
+                            System.out.println(" Password must be at least 6 characters!");
                         } else {
                             boolean changed = hrService.changePassword(employeeId, oldPass, newPass);
-                            System.out.println(changed ? "✅ Password changed successfully!" : 
-                                                       "❌ Password change failed!");
+                            System.out.println(changed ? " Password changed successfully!" : 
+                                                       "Password change failed!");
                         }
                         break;    
                         

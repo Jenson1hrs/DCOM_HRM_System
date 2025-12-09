@@ -25,14 +25,14 @@ public class SystemTest {
     public static void main(String[] args) {
         try {
             System.out.println("=".repeat(70));
-            System.out.println("🧪 COMPLETE HRM SYSTEM TEST SUITE");
+            System.out.println(" COMPLETE HRM SYSTEM TEST SUITE");
             System.out.println("=".repeat(70));
             
             // Connect to server
-            System.out.println("\n🔗 Connecting to server...");
+            System.out.println("\n Connecting to server...");
             hrService = (HRMService) Naming.lookup("rmi://localhost:1098/HRMService");
             payrollService = (PayrollService) Naming.lookup("rmi://localhost:1098/PayrollService");
-            System.out.println("✅ Connected to both services");
+            System.out.println(" Connected to both services");
             
             // Run all test categories
             System.out.println("\n" + "═".repeat(70));
@@ -72,21 +72,21 @@ public class SystemTest {
             
             // Summary
             System.out.println("\n" + "=".repeat(70));
-            System.out.println("📊 TEST RESULTS SUMMARY");
+            System.out.println(" TEST RESULTS SUMMARY");
             System.out.println("=".repeat(70));
-            System.out.println("✅ Passed: " + passedTests);
-            System.out.println("❌ Failed: " + failedTests);
-            System.out.println("📈 Success Rate: " + 
+            System.out.println(" Passed: " + passedTests);
+            System.out.println(" Failed: " + failedTests);
+            System.out.println(" Success Rate: " + 
                 String.format("%.1f%%", (passedTests * 100.0 / (passedTests + failedTests))));
             
             if (failedTests == 0) {
-                System.out.println("\n🎉 ALL TESTS PASSED! System is ready for submission.");
+                System.out.println("\n ALL TESTS PASSED! System is ready!");
             } else {
-                System.out.println("\n⚠️  Some tests failed. Check above for details.");
+                System.out.println("\n️  Some tests failed. Check above for details.");
             }
             
         } catch (Exception e) {
-            System.err.println("❌ Test suite failed: " + e.getMessage());
+            System.err.println(" Test suite failed: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -180,7 +180,7 @@ public class SystemTest {
                 emp = hrService.getEmployeeProfile("EMP001");
                 assertTest(emp.getLeaveBalance() == initialBalance - 1, "Leave balance reduced");
             } else {
-                System.out.println("   ⚠️  Skip: Insufficient leave balance");
+                System.out.println("   Skip: Insufficient leave balance");
             }
         } catch (Exception e) { failTest("Apply Leave", e); }
         
@@ -252,7 +252,7 @@ public class SystemTest {
     
     private static void testInputValidation() {
         System.out.println("\n6.1 Testing Invalid Input Handling...");
-        System.out.println("   ⚠️  Manual test required: Try invalid names/IC in HR menu");
+        System.out.println("     Manual test required: Try invalid names/IC in HR menu");
         System.out.println("   Expected: Clear error messages, no crashes");
     }
     
@@ -270,16 +270,16 @@ public class SystemTest {
     
     private static void assertTest(boolean condition, String testName) {
         if (condition) {
-            System.out.println("   ✅ " + testName);
+            System.out.println(testName);
             passedTests++;
         } else {
-            System.out.println("   ❌ " + testName + " - FAILED");
+            System.out.println( testName + " - FAILED");
             failedTests++;
         }
     }
     
     private static void failTest(String testName, Exception e) {
-        System.out.println("   ❌ " + testName + " - EXCEPTION: " + e.getMessage());
+        System.out.println(testName + " - EXCEPTION: " + e.getMessage());
         failedTests++;
     }
 }
