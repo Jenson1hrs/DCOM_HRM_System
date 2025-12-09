@@ -23,6 +23,7 @@ public class Employee implements Serializable {
     private int leaveBalance;
     private double monthlySalary = 4500.00; // Default salary
     private String bankAccount = "Not Set";
+    private String passwordHash;
     
     private List<FamilyMember> familyMembers = new ArrayList<>();
 
@@ -90,6 +91,10 @@ public class Employee implements Serializable {
         return familyMembers;
     }
 
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+    
     public void setEmployeeId(String employeeId) {
         this.employeeId = employeeId;
     }
@@ -144,6 +149,15 @@ public class Employee implements Serializable {
     
     public void addFamilyMember(FamilyMember member) {
         familyMembers.add(member);
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+    
+    public void setPassword(String plainPassword) {
+        // In real implementation, hash the password
+        this.passwordHash = plainPassword; // We'll update this after PasswordUtil
     }
     
     public boolean removeFamilyMember(String icNumber) {

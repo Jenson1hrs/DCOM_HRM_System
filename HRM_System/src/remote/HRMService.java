@@ -39,4 +39,11 @@ public interface HRMService extends Remote {
     
     // === AUTHENTICATION ===
     boolean authenticate(String userId, String password) throws RemoteException;
+    
+    boolean changePassword(String userId, String oldPassword, String newPassword) throws RemoteException;
+    
+    // Session Expiry
+    String createSession(String userId) throws RemoteException;
+    boolean validateSession(String token) throws RemoteException;
+    String getUserFromSession(String token) throws RemoteException;
 }

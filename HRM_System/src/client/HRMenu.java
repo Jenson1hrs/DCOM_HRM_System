@@ -15,6 +15,9 @@ import java.util.Scanner;
 import java.util.Map;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.io.File;
+import java.io.FileReader;
+import java.io.BufferedReader;
 
 public class HRMenu {
     public static void main(String[] args) {
@@ -34,7 +37,7 @@ public class HRMenu {
             // Connect to HRM Service
             HRMService hrService = (HRMService) Naming.lookup("rmi://127.0.0.1:1098/HRMService");
             
-            System.out.println("✅ Connected to HRM Service!");
+            System.out.println(" Connected to HRM Service!");
             
             // Authentication
             System.out.print("\nUser ID: ");
@@ -43,16 +46,16 @@ public class HRMenu {
             String password = scanner.nextLine();
             
             if (!hrService.authenticate(userId, password)) {
-                System.out.println("❌ Login failed! Access denied.");
+                System.out.println(" Login failed! Access denied.");
                 scanner.close();
                 return;
             }
             
-            System.out.println("✅ Login successful!\n");
+            System.out.println(" Login successful!\n");
             
             // Connect to Payroll Service
             PayrollService payrollService = (PayrollService) Naming.lookup("rmi://127.0.0.1:1098/PayrollService");
-            System.out.println("✅ Connected to Payroll Service!");
+            System.out.println(" Connected to Payroll Service!");
             
             boolean running = true;
             while (running) {
@@ -65,7 +68,8 @@ public class HRMenu {
                 System.out.println("6. Update Employee Profile");
                 System.out.println("7. Manage Employee Leaves");
                 System.out.println("8. Payroll Management");
-                System.out.println("9. Exit");
+                System.out.println("9. View Security Log"); 
+                System.out.println("10. Exit");
                 System.out.print("Choose option: ");
                 
                 int choice = scanner.nextInt();
@@ -128,7 +132,7 @@ public class HRMenu {
                         }
                         
                         boolean added = hrService.addFamilyMember(famEmpId, member);
-                        System.out.println(added ? "✅ Family member added!" : "❌ Failed to add family member.");
+                        System.out.println(added ? "✅ Family member added!" : " Failed to add family member.");
                         break;
                         
                     case 5: // View Family Members
@@ -155,7 +159,7 @@ public class HRMenu {
                         
                         Employee existingEmp = hrService.getEmployeeProfile(updateEmpId);
                         if (existingEmp == null) {
-                            System.out.println("❌ Employee not found!");
+                            System.out.println(" Employee not found!");
                             break;
                         }
                         
@@ -185,7 +189,7 @@ public class HRMenu {
                         if (!newPos.isEmpty()) existingEmp.setPosition(newPos);
                         
                         boolean updated = hrService.updateEmployeeProfile(existingEmp);
-                        System.out.println(updated ? "✅ Profile updated!" : "❌ Update failed.");
+                        System.out.println(updated ? " Profile updated!" : " Update failed.");
                         break;
                      
                     case 7: // Manage Employee Leaves
@@ -238,33 +242,37 @@ public class HRMenu {
                                 switch (action) {
                                     case 1: // Approve
                                         success = hrService.updateLeaveStatus(appId, "Approved", userId);
-                                        System.out.println(success ? "✅ Leave approved!" : "❌ Failed to approve.");
+                                        System.out.println(success ? " Leave approved!" : " Failed to approve.");
                                         break;
                                     case 2: // Reject
                                         success = hrService.updateLeaveStatus(appId, "Rejected: " + reason, userId);
-                                        System.out.println(success ? "✅ Leave rejected!" : "❌ Failed to reject.");
+                                        System.out.println(success ? " Leave rejected!" : " Failed to reject.");
                                         break;
                                     case 3: // Cancel
                                         System.out.println("Action cancelled.");
                                         break;
                                     default:
-                                        System.out.println("❌ Invalid action!");
+                                        System.out.println(" Invalid action!");
                                 }
                             } else if (leaveChoice != 0) {
-                                System.out.println("❌ Invalid selection!");
+                                System.out.println(" Invalid selection!");
                             }
                             break;    
                         
                     case 8: //PAYROLL MANAGEMENT
                         handlePayrollMenu(userId, hrService, payrollService, scanner);
+                    
+                    case 9: // View Security Log
+                        viewSecurityLog();
+                        break;    
                         
-                    case 9: // Exit
+                    case 10: // Exit
                         running = false;
-                        System.out.println("👋 Goodbye!");
+                        System.out.println(" Goodbye!");
                         break;
                         
                     default:
-                        System.out.println("❌ Invalid option!");
+                        System.out.println(" Invalid option!");
                 }
                 
                 if (running) {
@@ -276,7 +284,7 @@ public class HRMenu {
             scanner.close();
             
         } catch (Exception e) {
-            System.err.println("❌ Client error: " + e.getMessage());
+            System.err.println(" Client error: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -338,7 +346,7 @@ public class HRMenu {
                         }
                         
                         if (filtered.isEmpty()) {
-                            System.out.println("✅ All employees are already paid for this month!");
+                            System.out.println(" All employees are already paid for this month!");
                             break;
                         }
                         
@@ -366,7 +374,7 @@ public class HRMenu {
                             SalaryRecord record = payrollService.getSalaryRecord(empId, currentMonth);
                             
                             if (record != null) {
-                                System.out.println("\n📋 Payment Details:");
+                                System.out.println("\n Payment Details:");
                                 System.out.println("Employee: " + selectedEmp.get("name"));
                                 System.out.println("Month: " + record.getFormattedMonth());
                                 System.out.println("Working Days: " + record.getWorkingDays());
@@ -383,18 +391,18 @@ public class HRMenu {
                                     );
                                     
                                     if (success) {
-                                        System.out.println("✅ Salary payment processed successfully!");
+                                        System.out.println(" Salary payment processed successfully!");
                                         System.out.println("Amount: RM" + String.format("%.2f", record.getNetSalary()));
                                         System.out.println("Employee: " + selectedEmp.get("name"));
                                     } else {
-                                        System.out.println("❌ Payment failed. Employee may already be paid.");
+                                        System.out.println(" Payment failed. Employee may already be paid.");
                                     }
                                 } else {
                                     System.out.println("Payment cancelled.");
                                 }
                             }
                         } else {
-                            System.out.println("❌ Invalid selection!");
+                            System.out.println(" Invalid selection!");
                         }
                         break;
                         
@@ -429,7 +437,7 @@ public class HRMenu {
                                 System.out.println("───────────────────────────────────");
                             }
                             
-                            System.out.println("\n📊 Summary:");
+                            System.out.println("\n Summary:");
                             System.out.println("Total Records: " + history.size());
                             System.out.println("Total Paid: RM" + String.format("%.2f", totalPaid));
                         }
@@ -449,7 +457,7 @@ public class HRMenu {
                             for (SalaryRecord record : allRecords) {
                                 if (!currentMonth.equals(record.getMonthYear())) {
                                     currentMonth = record.getMonthYear();
-                                    System.out.println("\n📅 " + record.getFormattedMonth() + ":");
+                                    System.out.println("\n " + record.getFormattedMonth() + ":");
                                 }
                                 
                                 System.out.println("  " + record.getEmployeeId() + 
@@ -465,7 +473,7 @@ public class HRMenu {
                         break;
                         
                     default:
-                        System.out.println("❌ Invalid option!");
+                        System.out.println(" Invalid option!");
                 }
                 
                 if (inPayrollMenu) {
@@ -475,8 +483,45 @@ public class HRMenu {
             }
             
         } catch (Exception e) {
-            System.err.println("❌ Payroll menu error: " + e.getMessage());
+            System.err.println(" Payroll menu error: " + e.getMessage());
             e.printStackTrace();
         }
     }
+    
+    private static void viewSecurityLog() {
+    try {
+        System.out.println("\n=== SECURITY AUDIT LOG ===\n");
+        
+        // Connect to server
+        HRMService hrService = (HRMService) Naming.lookup("rmi://127.0.0.1:1098/HRMService");
+        
+        // In real implementation, you'd call a method to get logs
+        // For now, we'll read the file directly
+        
+        File logFile = new File("security_audit.log");
+        if (!logFile.exists()) {
+            System.out.println("No security log found yet.");
+            System.out.println("Perform some actions first (login, register, etc.)");
+            return;
+        }
+        
+        System.out.println("Log file: " + logFile.getAbsolutePath());
+        System.out.println("Last modified: " + new Date(logFile.lastModified()));
+        System.out.println("\n" + "═".repeat(50));
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
+            String line;
+            int lineCount = 0;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+                lineCount++;
+            }
+            System.out.println("\n═".repeat(50));
+            System.out.println("Total entries: " + lineCount);
+        }
+        
+    } catch (Exception e) {
+        System.out.println(" Error reading security log: " + e.getMessage());
+    }
+}
 }

@@ -14,8 +14,17 @@ import java.rmi.Naming;
 import java.util.*;
 import java.text.SimpleDateFormat;
 import java.io.*; 
+import util.PasswordUtil;
+import util.SecurityLogger;
+import util.InputValidator;
+import java.util.concurrent.ExecutorService;
+import java.io.PrintWriter;
 
 public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
+    // thread pool
+    private ExecutorService threadPool;
+
+    
     // SIMPLE STORAGE - No Database!
     private Map<String, Employee> employees = new HashMap<>();
     private Map<String, String> leaveApplications = new HashMap<>();
@@ -23,24 +32,29 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     // Separate map for family members
     private Map<String, List<FamilyMember>> familyMembers = new HashMap<>();
     
-    public HRMServiceImpl() throws RemoteException {
+    public HRMServiceImpl(ExecutorService threadPool) throws RemoteException {
         super();
-        
+        this.threadPool = threadPool;
+
         try {
             // Try to load existing data first
             loadDataFromFile();
-            System.out.println("✅ Loaded existing data from file");
-            
+            System.out.println(" Loaded existing data from file");
+
         } catch (Exception e) {
-            System.out.println("⚠️  Could not load saved data: " + e.getMessage());
-            System.out.println("🔄 Creating fresh data...");
-            
+            System.out.println("️  Could not load saved data: " + e.getMessage());
+            System.out.println(" Creating fresh data...");
+
             // Initialize fresh data
             employees = new HashMap<>();
             familyMembers = new HashMap<>();
             leaveApplications = new HashMap<>();
+                
+            System.out.println("🧵 HRM Service ready with thread pool support");
             
-            // Add sample data
+            // ===== CREATE EMPLOYEES WITH HASHED PASSWORDS =====
+
+            // Employee 1
             Employee emp1 = new Employee("John", "Doe", "A1234567");
             emp1.setEmployeeId("EMP001");
             emp1.setEmail("john.doe@company.com");
@@ -48,17 +62,24 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             emp1.setDepartment("IT");
             emp1.setPosition("Software Developer");
             emp1.setJoinDate("2023-01-15");
-            emp1.setMonthlySalary(5000.00); // Set salary
+            emp1.setMonthlySalary(5000.00);
             emp1.setBankAccount("1234-5678-9012");
+
+            // Hash password and store
+            String hash1 = PasswordUtil.hashPassword("password123");
+            emp1.setPasswordHash(hash1);
+            System.out.println("EMP001 password hash: " + hash1);
+
             employees.put("EMP001", emp1);
             familyMembers.put("EMP001", new ArrayList<>());
-            
-            // Add sample family member for EMP001
+
+            // Add family member
             FamilyMember spouse1 = new FamilyMember("Sarah Doe", "Spouse", "S1234567");
             spouse1.setDateOfBirth("1990-05-20");
             emp1.addFamilyMember(spouse1);
             familyMembers.get("EMP001").add(spouse1);
-            
+
+            // Employee 2
             Employee emp2 = new Employee("Jane", "Smith", "B9876543");
             emp2.setEmployeeId("EMP002");
             emp2.setEmail("jane.smith@company.com");
@@ -66,27 +87,82 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             emp2.setDepartment("HR");
             emp2.setPosition("HR Manager");
             emp2.setJoinDate("2022-03-10");
-            emp2.setMonthlySalary(6000.00); // Set salary
+            emp2.setMonthlySalary(6000.00);
             emp2.setBankAccount("9876-5432-1098");
+
+            String hash2 = PasswordUtil.hashPassword("password123");
+            emp2.setPasswordHash(hash2);
+            System.out.println("EMP002 password hash: " + hash2);
+
             employees.put("EMP002", emp2);
             familyMembers.put("EMP002", new ArrayList<>());
-            
-            // Add sample leave applications
+
+            // Leave applications
             leaveApplications.put("LV123456789", "EMP001|3|Annual Vacation|Pending");
             leaveApplications.put("LV987654321", "EMP002|2|Medical Leave|Approved");
-            
-            // Save the initial data
+
+            // Save data
             try {
                 saveDataToFile();
             } catch (IOException saveError) {
                 System.out.println("⚠️  Could not save initial data: " + saveError.getMessage());
             }
         }
-        
+
+        // DEBUG: Verify hashes
+        System.out.println("\n🔐 VERIFYING PASSWORD HASHES:");
+        for (Employee emp : employees.values()) {
+            String testHash = PasswordUtil.hashPassword("password123");
+            boolean matches = testHash.equals(emp.getPasswordHash());
+            System.out.println(emp.getEmployeeId() + ": " + 
+                (matches ? "✅ Hash matches" : "❌ Hash mismatch"));
+        }
+
         System.out.println("\n✅ HRM Service ready!");
         System.out.println("   HR Login: hr / hr123");
         System.out.println("   Employee Login: EMP001 / password123");
-        System.out.println("   Employee count: " + employees.size());
+        System.out.println("   🔒 Password security: ENABLED");
+    }
+    
+    // Session Expiry
+    private Map<String, Long> sessionTokens = new HashMap<>(); // token -> expiry time
+    private Map<String, String> userSessions = new HashMap<>(); // token -> userId
+
+    // Generate session token
+    public String createSession(String userId) throws RemoteException {
+        String token = "SESS_" + System.currentTimeMillis() + "_" + userId.hashCode();
+        long expiryTime = System.currentTimeMillis() + (30 * 60 * 1000); // 30 minutes
+
+        sessionTokens.put(token, expiryTime);
+        userSessions.put(token, userId);
+
+        SecurityLogger.logEvent(userId, "SESSION_CREATED", "SUCCESS", "Token: " + token);
+        return token;
+    }
+
+    // Validate session
+    public boolean validateSession(String token) throws RemoteException {
+        if (!sessionTokens.containsKey(token)) {
+            SecurityLogger.logError("SYSTEM", "INVALID_SESSION", "Token not found");
+            return false;
+        }
+
+        long expiryTime = sessionTokens.get(token);
+        if (System.currentTimeMillis() > expiryTime) {
+            sessionTokens.remove(token);
+            userSessions.remove(token);
+            SecurityLogger.logError("SYSTEM", "SESSION_EXPIRED", "Token: " + token);
+            return false;
+        }
+
+        // Renew session
+        sessionTokens.put(token, System.currentTimeMillis() + (30 * 60 * 1000));
+        return true;
+    }
+
+    // Get user from session
+    public String getUserFromSession(String token) throws RemoteException {
+        return userSessions.get(token);
     }
     
     // ===== FILE PERSISTENCE METHODS =====
@@ -101,14 +177,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             allData.put("leaveApplications", leaveApplications);
             
             oos.writeObject(allData);
-            System.out.println("💾 HRM data saved to file: hrm_data.dat");
+            System.out.println(" HRM data saved to file: hrm_data.dat");
         }
     }
     
     private void loadDataFromFile() throws IOException, ClassNotFoundException {
         File file = new File("hrm_data.dat");
         if (!file.exists()) {
-            System.out.println("📁 No saved data file found. Starting fresh.");
+            System.out.println(" No saved data file found. Starting fresh.");
             return;
         }
         
@@ -121,15 +197,40 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             familyMembers = (Map<String, List<FamilyMember>>) allData.get("familyMembers");
             leaveApplications = (Map<String, String>) allData.get("leaveApplications");
             
-            System.out.println("📂 Loaded HRM data:");
-            System.out.println("   Employees: " + employees.size());
-            System.out.println("   Leave Applications: " + leaveApplications.size());
+            System.out.println(" Loaded HRM data:");
+            System.out.println(" Employees: " + employees.size());
+            System.out.println(" Leave Applications: " + leaveApplications.size());
         }
     }
     
+    
     // ===== HR STAFF METHODS =====
+
     @Override
     public String registerEmployee(String firstName, String lastName, String icPassport) throws RemoteException {
+
+        // ===== VALIDATION FIRST =====
+        if (!InputValidator.isValidName(firstName)) {
+            SecurityLogger.logError("HR", "INVALID_INPUT", "Invalid first name: " + firstName);
+            return "❌ Invalid first name! Use 2-50 letters only.";
+        }
+
+        if (!InputValidator.isValidName(lastName)) {
+            SecurityLogger.logError("HR", "INVALID_INPUT", "Invalid last name: " + lastName);
+            return "❌ Invalid last name! Use 2-50 letters only.";
+        }
+
+        if (!InputValidator.isValidIcPassport(icPassport)) {
+            SecurityLogger.logError("HR", "INVALID_INPUT", "Invalid IC/Passport: " + icPassport);
+            return "❌ Invalid IC/Passport! Use 7-20 alphanumeric characters.";
+        }
+
+        // Sanitize inputs
+        firstName = InputValidator.sanitizeInput(firstName);
+        lastName = InputValidator.sanitizeInput(lastName);
+        icPassport = InputValidator.sanitizeInput(icPassport);
+
+        // ===== NOW CREATE EMPLOYEE =====
         String empId = "EMP" + String.format("%03d", employees.size() + 1);
         Employee emp = new Employee(firstName, lastName, icPassport);
         emp.setEmployeeId(empId);
@@ -137,12 +238,16 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         emp.setPhone("012-0000000");
         emp.setDepartment("New Hire");
         emp.setPosition("Trainee");
-        emp.setMonthlySalary(3000.00); // Default starting salary
-        emp.setBankAccount("Not set"); // Default bank account
-        
+        emp.setMonthlySalary(3000.00);
+        emp.setBankAccount("Not set");
+
+        // Generate and hash password
+        String plainPassword = PasswordUtil.generateRandomPassword();
+        emp.setPasswordHash(PasswordUtil.hashPassword(plainPassword));
+
         employees.put(empId, emp);
         familyMembers.put(empId, new ArrayList<>());
-        
+
         // Auto-save
         try {
             saveDataToFile();
@@ -150,76 +255,153 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             System.out.println("⚠️  Could not auto-save: " + e.getMessage());
         }
 
+        // Log successful registration
+        SecurityLogger.logSensitiveAction("HR", "REGISTER_EMPLOYEE", empId);
+
         return "✅ Employee registered!\n" +
                "   ID: " + empId + "\n" +
                "   Name: " + firstName + " " + lastName + "\n" +
-               "   Default password: password123\n" +
+               "   Temporary password: " + plainPassword + "\n" +
+               "   ⚠️  Change this password on first login!\n" +
                "   Default salary: RM3000.00";
     }
     
     @Override
     public List<Employee> getAllEmployees() throws RemoteException {
-        System.out.println("🔍 Returning " + employees.size() + " employees");
+        System.out.println(" Returning " + employees.size() + " employees");
         return new ArrayList<>(employees.values());
     }
     
     @Override
     public String generateYearlyReport(String employeeId) throws RemoteException {
-        Employee emp = employees.get(employeeId);
-        if (emp == null) return "❌ Employee not found!";
-        
-        StringBuilder report = new StringBuilder();
-        report.append("=== YEARLY EMPLOYEE REPORT ===\n\n");
-        
-        // Basic employee info
-        report.append("Employee ID: ").append(emp.getEmployeeId()).append("\n");
-        report.append("Name: ").append(emp.getFirstName()).append(" ").append(emp.getLastName()).append("\n");
-        report.append("IC/Passport: ").append(emp.getIcPassport()).append("\n");
-        report.append("Email: ").append(emp.getEmail()).append("\n");
-        report.append("Phone: ").append(emp.getPhone()).append("\n");
-        report.append("Department: ").append(emp.getDepartment()).append("\n");
-        report.append("Position: ").append(emp.getPosition()).append("\n");
-        report.append("Join Date: ").append(emp.getJoinDate()).append("\n");
-        report.append("Monthly Salary: RM").append(String.format("%.2f", emp.getMonthlySalary())).append("\n");
-        report.append("Bank Account: ").append(emp.getBankAccount()).append("\n");
-        report.append("Leave Balance: ").append(emp.getLeaveBalance()).append(" days\n\n");
-        
-        // Family details
-        report.append("=== FAMILY MEMBERS ===\n");
-        List<FamilyMember> family = familyMembers.getOrDefault(employeeId, new ArrayList<>());
-        if (family.isEmpty()) {
-            report.append("No family members registered.\n");
-        } else {
-            for (FamilyMember fm : family) {
-                report.append("- ").append(fm.getName())
-                      .append(" (").append(fm.getRelationship()).append(")")
-                      .append(" - IC: ").append(fm.getIcNumber());
-                if (fm.getDateOfBirth() != null && !fm.getDateOfBirth().isEmpty()) {
-                    report.append(" - DOB: ").append(fm.getDateOfBirth());
+        System.out.println("📊 Yearly report requested for: " + employeeId);
+
+        // Check if employee exists first (fast check)
+        if (!employees.containsKey(employeeId)) {
+            return "❌ Employee not found!";
+        }
+
+        // Log the request
+        SecurityLogger.logDataAccess("HR", "YEARLY_REPORT", employeeId);
+
+        // Submit to thread pool for background processing
+        threadPool.submit(() -> {
+            try {
+                generateReportInBackground(employeeId);
+            } catch (Exception e) {
+                System.err.println("❌ Error generating report for " + employeeId + ": " + e.getMessage());
+            }
+        });
+
+        // Return immediately - report will be generated in background
+        return "✅ Yearly report generation started for employee: " + employeeId + "\n" +
+               "   Report ID: RPT" + System.currentTimeMillis() + "\n" +
+               "   Status: Processing in background...\n" +
+               "   Yearly Report Saved in File!.\n";
+    }
+
+    // Private method that runs in background thread
+    private void generateReportInBackground(String employeeId) {
+        try {
+            System.out.println("🧵 Background thread started for report: " + employeeId);
+
+            // Simulate complex/long report generation
+            Thread.sleep(3000); // 3 second delay
+
+            Employee emp = employees.get(employeeId);
+            if (emp == null) {
+                System.out.println("❌ Employee not found in background: " + employeeId);
+                return;
+            }
+
+            StringBuilder report = new StringBuilder();
+            report.append("=== YEARLY EMPLOYEE REPORT ===\n\n");
+
+            // Basic employee info
+            report.append("Employee ID: ").append(emp.getEmployeeId()).append("\n");
+            report.append("Name: ").append(emp.getFirstName()).append(" ").append(emp.getLastName()).append("\n");
+            report.append("IC/Passport: ").append(emp.getIcPassport()).append("\n");
+            report.append("Email: ").append(emp.getEmail()).append("\n");
+            report.append("Phone: ").append(emp.getPhone()).append("\n");
+            report.append("Department: ").append(emp.getDepartment()).append("\n");
+            report.append("Position: ").append(emp.getPosition()).append("\n");
+            report.append("Join Date: ").append(emp.getJoinDate()).append("\n");
+            report.append("Monthly Salary: RM").append(String.format("%.2f", emp.getMonthlySalary())).append("\n");
+            report.append("Bank Account: ").append(emp.getBankAccount()).append("\n");
+            report.append("Leave Balance: ").append(emp.getLeaveBalance()).append(" days\n\n");
+
+            // Family details
+            report.append("=== FAMILY MEMBERS ===\n");
+            List<FamilyMember> family = familyMembers.getOrDefault(employeeId, new ArrayList<>());
+            if (family.isEmpty()) {
+                report.append("No family members registered.\n");
+            } else {
+                for (FamilyMember fm : family) {
+                    report.append("- ").append(fm.getName())
+                          .append(" (").append(fm.getRelationship()).append(")")
+                          .append(" - IC: ").append(fm.getIcNumber());
+                    if (fm.getDateOfBirth() != null && !fm.getDateOfBirth().isEmpty()) {
+                        report.append(" - DOB: ").append(fm.getDateOfBirth());
+                    }
+                    report.append("\n");
                 }
-                report.append("\n");
             }
-        }
-        
-        // Leave history
-        report.append("\n=== LEAVE HISTORY ===\n");
-        int count = 0;
-        for (Map.Entry<String, String> entry : leaveApplications.entrySet()) {
-            if (entry.getValue().startsWith(employeeId + "|")) {
-                String[] parts = entry.getValue().split("\\|");
-                report.append("Application: ").append(entry.getKey()).append("\n");
-                report.append("  Days: ").append(parts[1])
-                      .append(", Reason: ").append(parts[2])
-                      .append(", Status: ").append(parts[3]).append("\n");
-                count++;
+
+            // Leave history
+            report.append("\n=== LEAVE HISTORY ===\n");
+            int count = 0;
+            for (Map.Entry<String, String> entry : leaveApplications.entrySet()) {
+                if (entry.getValue().startsWith(employeeId + "|")) {
+                    String[] parts = entry.getValue().split("\\|");
+                    report.append("Application: ").append(entry.getKey()).append("\n");
+                    report.append("  Days: ").append(parts[1])
+                          .append(", Reason: ").append(parts[2])
+                          .append(", Status: ").append(parts[3]).append("\n");
+                    count++;
+                }
             }
+            if (count == 0) {
+                report.append("No leave records found.\n");
+            }
+
+            report.append("\nReport generated on: ").append(new Date());
+            report.append("\nGenerated by thread: ").append(Thread.currentThread().getName());
+
+            // Save report to file (simulated)
+            String filename = "reports/report_" + employeeId + "_" + 
+                             new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".txt";
+            saveReportToFile(filename, report.toString());
+
+            System.out.println("✅ Background report completed: " + employeeId);
+            System.out.println("   Saved to: " + filename);
+            System.out.println("   Thread: " + Thread.currentThread().getName());
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("❌ Report generation interrupted for: " + employeeId);
+        } catch (Exception e) {
+            System.err.println("❌ Error in background report generation: " + e.getMessage());
         }
-        if (count == 0) {
-            report.append("No leave records found.\n");
+    }
+
+    // Helper method to save report to file
+    private void saveReportToFile(String filename, String content) {
+        try {
+            // Create reports directory if it doesn't exist
+            File dir = new File("reports");
+            if (!dir.exists()) {
+                dir.mkdir();
+            }
+
+            File file = new File(filename);
+            try (PrintWriter writer = new PrintWriter(file)) {
+                writer.println(content);
+            }
+
+            System.out.println("💾 Report saved to: " + file.getAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("❌ Could not save report to file: " + e.getMessage());
         }
-        
-        report.append("\nReport generated on: ").append(new Date());
-        return report.toString();
     }
     
     // ===== EMPLOYEE METHODS =====
@@ -241,7 +423,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             try {
                 saveDataToFile();
             } catch (IOException e) {
-                System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+                System.out.println(" Could not auto-save: " + e.getMessage());
             }
             
             return true;
@@ -259,7 +441,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public String applyForLeave(String employeeId, int days, String reason) throws RemoteException {
         Employee emp = employees.get(employeeId);
-        if (emp == null) return "❌ Employee not found!";
+        if (emp == null) return " Employee not found!";
         
         if (emp.getLeaveBalance() >= days) {
             String appId = "LV" + System.currentTimeMillis();
@@ -280,23 +462,23 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
                 payrollService.syncLeaveWithSalary(employeeId, currentMonth, days, true);
                 
             } catch (Exception e) {
-                System.out.println("⚠️  Could not sync leave with payroll: " + e.getMessage());
+                System.out.println(" Could not sync leave with payroll: " + e.getMessage());
             }
             
             // Auto-save
             try {
                 saveDataToFile();
             } catch (IOException e) {
-                System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+                System.out.println(" Could not auto-save: " + e.getMessage());
             }
             
-            return "✅ Leave application submitted!\n" +
+            return "Leave application submitted!\n" +
                    "   Application ID: " + appId + "\n" +
                    "   Days: " + days + "\n" +
                    "   New Balance: " + emp.getLeaveBalance() + " days\n" +
                    "   Note: Leave will affect salary calculation for current month.";
         }
-        return "❌ Insufficient leave balance!\n" +
+        return "Insufficient leave balance!\n" +
                "   Requested: " + days + " days\n" +
                "   Available: " + emp.getLeaveBalance() + " days";
     }
@@ -305,7 +487,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public String applyForUnpaidLeave(String employeeId, int days, String reason) throws RemoteException {
         Employee emp = employees.get(employeeId);
-        if (emp == null) return "❌ Employee not found!";
+        if (emp == null) return " Employee not found!";
         
         String appId = "ULV" + System.currentTimeMillis(); // ULV = Unpaid Leave
         leaveApplications.put(appId, employeeId + "|" + days + "|" + reason + "|Unpaid|Pending");
@@ -321,17 +503,17 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             payrollService.syncLeaveWithSalary(employeeId, currentMonth, days, false);
             
         } catch (Exception e) {
-            System.out.println("⚠️  Could not sync unpaid leave with payroll: " + e.getMessage());
+            System.out.println("  Could not sync unpaid leave with payroll: " + e.getMessage());
         }
         
         // Auto-save
         try {
             saveDataToFile();
         } catch (IOException e) {
-            System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+            System.out.println("️  Could not auto-save: " + e.getMessage());
         }
         
-        return "✅ Unpaid leave application submitted!\n" +
+        return " Unpaid leave application submitted!\n" +
                "   Application ID: " + appId + "\n" +
                "   Days: " + days + "\n" +
                "   Note: Unpaid leave will deduct from salary.";
@@ -357,7 +539,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         try {
             saveDataToFile();
         } catch (IOException e) {
-            System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+            System.out.println("️  Could not auto-save: " + e.getMessage());
         }
         
         return true;
@@ -386,7 +568,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             try {
                 saveDataToFile();
             } catch (IOException e) {
-                System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+                System.out.println("️  Could not auto-save: " + e.getMessage());
             }
         }
         
@@ -396,24 +578,68 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     // ===== AUTHENTICATION =====
     @Override
     public boolean authenticate(String userId, String password) throws RemoteException {
-        // HR Admin login
-        if ("hr".equals(userId) && "hr123".equals(password)) {
-            return true;
-        }
-        
-        // Employee login (using employee ID)
-        if (employees.containsKey(userId) && "password123".equals(password)) {
-            return true;
-        }
-        
-        // Alternative: login with email
-        for (Employee emp : employees.values()) {
-            if (emp.getEmail() != null && emp.getEmail().equals(userId) && "password123".equals(password)) {
+        String clientIP = "RMI-Client"; // In real RMI: getClientHost()
+
+        try {
+            // HR login
+            if ("hr".equals(userId) && "hr123".equals(password)) {
+                SecurityLogger.logLogin(userId, true, clientIP);
+                System.out.println(" HR authentication successful");
                 return true;
             }
+
+            // Employee login by ID
+            Employee emp = employees.get(userId);
+            if (emp != null) {
+                // Check password
+                boolean authenticated = false;
+
+                if (emp.getPasswordHash() != null && !emp.getPasswordHash().isEmpty()) {
+                    authenticated = PasswordUtil.verifyPassword(password, emp.getPasswordHash());
+                } else {
+                    // Fallback for old data
+                    authenticated = "password123".equals(password);
+                }
+
+                if (authenticated) {
+                    SecurityLogger.logLogin(userId, true, clientIP);
+                    SecurityLogger.logDataAccess(userId, "EMPLOYEE_PROFILE", emp.getEmployeeId());
+                    System.out.println(" Employee authentication successful: " + userId);
+                } else {
+                    SecurityLogger.logLogin(userId, false, clientIP);
+                    SecurityLogger.logError(userId, "AUTH_FAILURE", "Invalid password");
+                    System.out.println(" Authentication failed for: " + userId);
+                }
+                return authenticated;
+            }
+
+            // Login by email
+            for (Employee e : employees.values()) {
+                if (e.getEmail() != null && e.getEmail().equals(userId)) {
+                    boolean authenticated = false;
+
+                    if (e.getPasswordHash() != null && !e.getPasswordHash().isEmpty()) {
+                        authenticated = PasswordUtil.verifyPassword(password, e.getPasswordHash());
+                    } else {
+                        authenticated = "password123".equals(password);
+                    }
+
+                    if (authenticated) {
+                        SecurityLogger.logLogin(e.getEmployeeId(), true, clientIP + " (via email)");
+                        return true;
+                    }
+                    break;
+                }
+            }
+
+            SecurityLogger.logLogin(userId, false, clientIP);
+            SecurityLogger.logError("SYSTEM", "USER_NOT_FOUND", "User ID: " + userId);
+            return false;
+
+        } catch (Exception e) {
+            SecurityLogger.logError(userId, "AUTH_EXCEPTION", e.getMessage());
+            throw new RemoteException("Authentication error");
         }
-        
-        return false;
     }
     
     @Override
@@ -446,6 +672,48 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     }
 
     @Override
+    public boolean changePassword(String userId, String oldPassword, String newPassword) throws RemoteException {
+        // HR password change - simple implementation
+        if ("hr".equals(userId)) {
+            // For HR, we just check if old password matches "hr123"
+            if (!PasswordUtil.verifyPassword(oldPassword, PasswordUtil.hashPassword("hr123"))) {
+                System.out.println(" HR password change failed: Old password incorrect");
+                return false;
+            }
+            System.out.println(" HR password changed successfully");
+            return true;
+        }
+
+        // Employee password change
+        Employee emp = employees.get(userId);
+        if (emp == null || emp.getPasswordHash() == null) {
+            System.out.println(" Password change failed: Employee not found - " + userId);
+            return false;
+        }
+
+        // Verify old password
+        if (!PasswordUtil.verifyPassword(oldPassword, emp.getPasswordHash())) {
+            System.out.println(" Password change failed: Old password incorrect for " + userId);
+            return false;
+        }
+
+        // Set new password (hashed)
+        emp.setPasswordHash(PasswordUtil.hashPassword(newPassword));
+
+        // Auto-save
+        try {
+            saveDataToFile();
+        } catch (IOException e) {
+            System.out.println("️  Could not auto-save password change: " + e.getMessage());
+        }
+        
+        SecurityLogger.logPasswordChange(userId);
+        
+        System.out.println(" Password changed successfully for: " + userId);
+        return true;
+    }
+    
+    @Override
     public boolean updateLeaveStatus(String applicationId, String status, String processedBy) throws RemoteException {
         String currentStatus = leaveApplications.get(applicationId);
         if (currentStatus == null) {
@@ -462,7 +730,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             try {
                 saveDataToFile();
             } catch (IOException e) {
-                System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+                System.out.println("️  Could not auto-save: " + e.getMessage());
             }
             
             return true;

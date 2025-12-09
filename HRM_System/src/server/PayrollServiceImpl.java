@@ -13,16 +13,21 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.Naming;
 import java.util.*;
 import java.text.SimpleDateFormat;
+import java.util.concurrent.ExecutorService;
 
 public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollService {
     private HRMService hrService;
     private Map<String, SalaryRecord> salaryRecords; // key: empId_monthYear
+    private ExecutorService threadPool;
     
-    public PayrollServiceImpl(HRMService hrService) throws RemoteException {
+    public PayrollServiceImpl(HRMService hrService, ExecutorService threadPool) throws RemoteException {
         super();
         this.hrService = hrService;
+        this.threadPool = threadPool;  // Store thread pool
         this.salaryRecords = new HashMap<>();
         initializeSampleData();
+        
+        System.out.println(" Payroll Service ready with thread pool support");
     }
     
     private void initializeSampleData() {
@@ -128,15 +133,35 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
     public boolean processSalaryPayment(String empId, String monthYear, String processedBy) 
             throws RemoteException {
         
-        SalaryRecord record = getSalaryRecord(empId, monthYear);
-        if (record != null && "UNPAID".equals(record.getPaymentStatus())) {
-            record.setPaymentStatus("PAID", processedBy);
-            System.out.println("✅ Salary paid: " + empId + " for " + monthYear + 
-                              " by " + processedBy);
-            return true;
-        }
+        System.out.println("💰 Salary payment requested for " + empId + " (processing async)");
         
-        return false;
+        // Process in background thread
+        threadPool.submit(() -> {
+            try {
+                processPaymentAsync(empId, monthYear, processedBy);
+            } catch (RemoteException e) {
+                System.err.println("Error processing payment: " + e.getMessage());
+            }
+        });
+        
+        return true; // Return immediately, process in background
+    }
+    
+        private void processPaymentAsync(String empId, String monthYear, String processedBy) 
+            throws RemoteException {
+        
+        try {
+            // Simulate payment processing delay
+            Thread.sleep(2000);
+            
+            SalaryRecord record = getSalaryRecord(empId, monthYear);
+            if (record != null && "UNPAID".equals(record.getPaymentStatus())) {
+                record.setPaymentStatus("PAID", processedBy);
+                System.out.println("✅ Background payment completed: " + empId + " for " + monthYear);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
     
     @Override

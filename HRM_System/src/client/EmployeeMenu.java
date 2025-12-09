@@ -34,37 +34,57 @@ public class EmployeeMenu {
             // Connect to HRM Service
             HRMService hrService = (HRMService) Naming.lookup("rmi://127.0.0.1:1098/HRMService");
             
-            System.out.println("✅ Connected to HRM Service!");
+            System.out.println(" Connected to HRM Service!");
             
             // Authentication
-            System.out.print("\nEmployee ID: ");
-            String employeeId = scanner.nextLine();
+            System.out.println("\n=== LOGIN ===");
+            System.out.println("Login with:");
+            System.out.println("1. Employee ID");
+            System.out.println("2. Email");
+            System.out.print("Choose option (1 or 2): ");
+            int loginType = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            String employeeId = "";
+            if (loginType == 1) {
+                System.out.print("Employee ID: ");
+                employeeId = scanner.nextLine();
+            } else if (loginType == 2) {
+                System.out.print("Email: ");
+                employeeId = scanner.nextLine();
+            } else {
+                System.out.println("❌ Invalid option!");
+                scanner.close();
+                return;
+            }
+
             System.out.print("Password: ");
             String password = scanner.nextLine();
-            
+
             if (!hrService.authenticate(employeeId, password)) {
                 System.out.println("❌ Login failed! Invalid credentials.");
                 scanner.close();
                 return;
             }
             
-            System.out.println("✅ Login successful!\n");
+            System.out.println(" Login successful!\n");
             
             // Connect to Payroll Service
             PayrollService payrollService = (PayrollService) Naming.lookup("rmi://127.0.0.1:1098/PayrollService");
-            System.out.println("✅ Connected to Payroll Service!");
+            System.out.println(" Connected to Payroll Service!");
             
             boolean running = true;
             while (running) {
                 System.out.println("=== EMPLOYEE MENU ===");
                 System.out.println("1. View My Profile");
                 System.out.println("2. Update My Profile");
-                System.out.println("3. Check Leave Balance");
-                System.out.println("4. Apply for Leave");
-                System.out.println("5. Check Leave Status");
-                System.out.println("6. Manage Family Members");
-                System.out.println("7. Salary & Payment"); 
-                System.out.println("8. Exit");
+                System.out.println("3. Change Password");
+                System.out.println("4. Check Leave Balance");
+                System.out.println("5. Apply for Leave");
+                System.out.println("6. Check Leave Status");
+                System.out.println("7. Manage Family Members");
+                System.out.println("8. Salary & Payment"); 
+                System.out.println("9. Exit");
                 System.out.print("Choose option: ");
                 
                 int choice = scanner.nextInt();
@@ -85,7 +105,7 @@ public class EmployeeMenu {
                             System.out.println("Join Date: " + profile.getJoinDate());
                             System.out.println("Leave Balance: " + profile.getLeaveBalance() + " days");
                         } else {
-                            System.out.println("❌ Profile not found!");
+                            System.out.println(" Profile not found!");
                         }
                         break;
                         
@@ -94,7 +114,7 @@ public class EmployeeMenu {
                         Employee myProfile = hrService.getEmployeeProfile(employeeId);
                         
                         if (myProfile == null) {
-                            System.out.println("❌ Profile not found!");
+                            System.out.println(" Profile not found!");
                             break;
                         }
                         
@@ -117,20 +137,40 @@ public class EmployeeMenu {
                         if (!newPos.isEmpty()) myProfile.setPosition(newPos);
                         
                         boolean updated = hrService.updateEmployeeProfile(myProfile);
-                        System.out.println(updated ? "✅ Profile updated!" : "❌ Update failed.");
+                        System.out.println(updated ? " Profile updated!" : " Update failed.");
                         break;
+                    
+                    case 3: // Change Password (add this to your menu)
+                        System.out.println("\n--- Change Password ---");
+                        System.out.print("Current password: ");
+                        String oldPass = scanner.nextLine();
+                        System.out.print("New password: ");
+                        String newPass = scanner.nextLine();
+                        System.out.print("Confirm new password: ");
+                        String confirmPass = scanner.nextLine();
+
+                        if (!newPass.equals(confirmPass)) {
+                            System.out.println("❌ New passwords don't match!");
+                        } else if (newPass.length() < 6) {
+                            System.out.println("❌ Password must be at least 6 characters!");
+                        } else {
+                            boolean changed = hrService.changePassword(employeeId, oldPass, newPass);
+                            System.out.println(changed ? "✅ Password changed successfully!" : 
+                                                       "❌ Password change failed!");
+                        }
+                        break;    
                         
-                    case 3: // Check Leave Balance
+                    case 4: // Check Leave Balance
                         System.out.println("\n--- Leave Balance ---");
                         int balance = hrService.checkLeaveBalance(employeeId);
                         if (balance >= 0) {
                             System.out.println("Available leave: " + balance + " days");
                         } else {
-                            System.out.println("❌ Could not retrieve leave balance.");
+                            System.out.println(" Could not retrieve leave balance.");
                         }
                         break;
                         
-                    case 4: // Apply for Leave
+                    case 5: // Apply for Leave
                         System.out.println("\n--- Apply for Leave ---");
                         System.out.print("Number of days: ");
                         int days = scanner.nextInt();
@@ -142,7 +182,7 @@ public class EmployeeMenu {
                         System.out.println("\n" + leaveResult);
                         break;
                         
-                    case 5: // View Leave History (replaces "Check Leave Status")
+                    case 6: // View Leave History (replaces "Check Leave Status")
                         System.out.println("\n--- My Leave History ---");
                         List<Map<String, String>> myLeaves = hrService.getEmployeeLeaveHistory(employeeId);
 
@@ -165,7 +205,7 @@ public class EmployeeMenu {
 
                             if (viewChoice > 0 && viewChoice <= myLeaves.size()) {
                                 Map<String, String> selected = myLeaves.get(viewChoice - 1);
-                                System.out.println("\n📋 Leave Details:");
+                                System.out.println("\n Leave Details:");
                                 System.out.println("Leave ID: " + selected.get("applicationId"));
                                 System.out.println("Days: " + selected.get("days"));
                                 System.out.println("Reason: " + selected.get("reason"));
@@ -179,7 +219,7 @@ public class EmployeeMenu {
                         }
                         break;
                         
-                    case 6: // Manage Family Members
+                    case 7: // Manage Family Members
                         System.out.println("\n--- Family Members ---");
                         System.out.println("1. View Family Members");
                         System.out.println("2. Add Family Member");
@@ -218,31 +258,31 @@ public class EmployeeMenu {
                                 }
                                 
                                 boolean added = hrService.addFamilyMember(employeeId, newMember);
-                                System.out.println(added ? "✅ Family member added!" : "❌ Failed to add.");
+                                System.out.println(added ? " Family member added!" : " Failed to add.");
                                 break;
                                 
                             case 3: // Remove
                                 System.out.print("Enter Family Member IC Number to remove: ");
                                 String removeIc = scanner.nextLine();
                                 boolean removed = hrService.removeFamilyMember(employeeId, removeIc);
-                                System.out.println(removed ? "✅ Family member removed!" : "❌ Not found.");
+                                System.out.println(removed ? " Family member removed!" : " Not found.");
                                 break;
                                 
                             default:
-                                System.out.println("❌ Invalid choice!");
+                                System.out.println(" Invalid choice!");
                         }
                         break;
                         
-                    case 7:   //SALARY & PAYMENT MENU       
+                    case 8:   //SALARY & PAYMENT MENU       
                         handleSalaryMenu(employeeId, hrService, payrollService, scanner); 
                         
-                    case 8: // Exit
+                    case 9: // Exit
                         running = false;
-                        System.out.println("👋 Goodbye!");
+                        System.out.println(" Goodbye!");
                         break;
                         
                     default:
-                        System.out.println("❌ Invalid option!");
+                        System.out.println(" Invalid option!");
                 }
                 
                 if (running) {
@@ -254,7 +294,7 @@ public class EmployeeMenu {
             scanner.close();
             
         } catch (Exception e) {
-            System.err.println("❌ Client error: " + e.getMessage());
+            System.err.println(" Client error: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -295,7 +335,7 @@ public class EmployeeMenu {
                                 System.out.println("Paid on: " + sdf.format(currentSalary.getPaymentDate()));
                             }
                         } else {
-                            System.out.println("❌ No salary record found for current month.");
+                            System.out.println(" No salary record found for current month.");
                         }
                         break;
                         
@@ -322,7 +362,7 @@ public class EmployeeMenu {
                             
                             if (viewChoice > 0 && viewChoice <= history.size()) {
                                 SalaryRecord selected = history.get(viewChoice - 1);
-                                System.out.println("\n📋 Salary Details:");
+                                System.out.println("\n Salary Details:");
                                 System.out.println("Month: " + selected.getFormattedMonth());
                                 System.out.println("Base Salary: RM" + String.format("%.2f", selected.getBaseSalary()));
                                 System.out.println("Working Days: " + selected.getWorkingDays());
@@ -355,9 +395,9 @@ public class EmployeeMenu {
                         
                         boolean updated = payrollService.updateBankAccount(empId, newAccount);
                         if (updated) {
-                            System.out.println("✅ Bank account updated successfully!");
+                            System.out.println(" Bank account updated successfully!");
                         } else {
-                            System.out.println("❌ Failed to update bank account.");
+                            System.out.println(" Failed to update bank account.");
                         }
                         break;
                         
@@ -367,7 +407,7 @@ public class EmployeeMenu {
                         break;
                         
                     default:
-                        System.out.println("❌ Invalid option!");
+                        System.out.println(" Invalid option!");
                 }
                 
                 if (inSalaryMenu) {
@@ -377,7 +417,7 @@ public class EmployeeMenu {
             }
             
         } catch (Exception e) {
-            System.err.println("❌ Salary menu error: " + e.getMessage());
+            System.err.println(" Salary menu error: " + e.getMessage());
         }
     }
 }
