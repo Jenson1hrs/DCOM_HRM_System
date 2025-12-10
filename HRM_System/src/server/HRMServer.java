@@ -49,15 +49,15 @@ public class HRMServer {
             System.out.println("  2. Payroll Service: rmi://localhost:1098/PayrollService");
             
             System.out.println("\n Performance Features:");
-            System.out.println("  • Thread Pool Size: 10 concurrent clients");
-            System.out.println("  • Background processing enabled");
-            System.out.println("  • Non-blocking I/O operations");
+            System.out.println("  1. Thread Pool Size: 10 concurrent clients");
+            System.out.println("  2. Background processing enabled");
+            System.out.println("  3. Non-blocking I/O operations");
             
-            System.out.println("\n🔐 Sample Logins:");
+            System.out.println("\n Sample Logins:");
             System.out.println("  HR Staff: hr / hr123");
             System.out.println("  Employee: EMP001 / password123");
             
-            System.out.println("\n️  Keep this window open while clients are running!");
+            System.out.println("\n Keep this window open while clients are running!");
             
             // Add shutdown hook for graceful shutdown
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -86,7 +86,7 @@ public class HRMServer {
             while (!threadPool.isShutdown()) {
                 try {
                     Thread.sleep(30000); // Check every 30 seconds
-                    System.out.println("\n[ THREAD POOL STATS] Active: " + 
+                    System.out.println("\n[THREAD POOL STATS] Active: " + 
                             Thread.activeCount() + " | Pool: " + threadPool);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();

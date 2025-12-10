@@ -189,14 +189,14 @@ public class EmployeeMenu {
                         if (myLeaves.isEmpty()) {
                             System.out.println("No leave applications found.");
                         } else {
-                            System.out.println("═══════════════════════════════════════");
+                            System.out.println("================================");
                             for (int i = 0; i < myLeaves.size(); i++) {
                                 Map<String, String> leave = myLeaves.get(i);
                                 System.out.println((i + 1) + ". Leave ID: " + leave.get("applicationId"));
                                 System.out.println("   Days: " + leave.get("days"));
                                 System.out.println("   Reason: " + leave.get("reason"));
                                 System.out.println("   Status: " + leave.get("status"));
-                                System.out.println("───────────────────────────────────");
+                                System.out.println("=============================");
                             }
 
                             System.out.print("\nEnter number to view details (1-" + myLeaves.size() + ") or 0 to go back: ");
@@ -346,13 +346,13 @@ public class EmployeeMenu {
                         if (history.isEmpty()) {
                             System.out.println("No salary records found.");
                         } else {
-                            System.out.println("═══════════════════════════════════════");
+                            System.out.println("================================");
                             for (int i = 0; i < history.size(); i++) {
                                 SalaryRecord record = history.get(i);
                                 System.out.println((i + 1) + ". " + record.getFormattedMonth());
                                 System.out.println("   Amount: RM" + String.format("%.2f", record.getNetSalary()));
                                 System.out.println("   Status: " + record.getPaymentStatus());
-                                System.out.println("───────────────────────────────────");
+                                System.out.println("============================");
                             }
                             
                             // Option to view details

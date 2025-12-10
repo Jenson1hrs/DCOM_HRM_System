@@ -203,14 +203,14 @@ public class HRMenu {
 
                             // Display all leaves with numbers
                             System.out.println("All Leave Applications:");
-                            System.out.println("═══════════════════════════════════════");
+                            System.out.println("=================================");
                             for (int i = 0; i < allLeaves.size(); i++) {
                                 Map<String, String> leave = allLeaves.get(i);
                                 System.out.println((i + 1) + ". " + leave.get("employeeName") + " (" + leave.get("employeeId") + ")");
                                 System.out.println("   Leave ID: " + leave.get("applicationId"));
                                 System.out.println("   Days: " + leave.get("days") + " | Reason: " + leave.get("reason"));
                                 System.out.println("   Status: " + leave.get("status"));
-                                System.out.println("───────────────────────────────────");
+                                System.out.println("==============================");
                             }
 
                             System.out.print("\nSelect leave to manage (1-" + allLeaves.size() + ") or 0 to cancel: ");
@@ -317,7 +317,7 @@ public class HRMenu {
                             String currentMonth = sdf.format(new Date());
                             
                             System.out.println("Current Month: " + currentMonth);
-                            System.out.println("═══════════════════════════════════════");
+                            System.out.println("=================================");
                             
                             for (int i = 0; i < paymentStatus.size(); i++) {
                                 Map<String, String> emp = paymentStatus.get(i);
@@ -327,7 +327,7 @@ public class HRMenu {
                                 System.out.println("   Salary: " + emp.get("salary"));
                                 System.out.println("   Net Salary: " + emp.get("netSalary"));
                                 System.out.println("   Status: " + emp.get("status"));
-                                System.out.println("───────────────────────────────────");
+                                System.out.println("============================");
                             }
                         }
                         break;
@@ -417,7 +417,7 @@ public class HRMenu {
                             System.out.println("No payment history found for employee " + historyEmpId);
                         } else {
                             System.out.println("Payment History for: " + historyEmpId);
-                            System.out.println("═══════════════════════════════════════");
+                            System.out.println("=================================");
                             
                             double totalPaid = 0;
                             for (SalaryRecord record : history) {
@@ -434,7 +434,7 @@ public class HRMenu {
                                     totalPaid += record.getNetSalary();
                                 }
                                 
-                                System.out.println("───────────────────────────────────");
+                                System.out.println("==============================");
                             }
                             
                             System.out.println("\n Summary:");
@@ -451,7 +451,7 @@ public class HRMenu {
                             System.out.println("No salary records found.");
                         } else {
                             System.out.println("Total Records: " + allRecords.size());
-                            System.out.println("═══════════════════════════════════════");
+                            System.out.println("=================================");
                             
                             String currentMonth = "";
                             for (SalaryRecord record : allRecords) {

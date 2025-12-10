@@ -12,7 +12,7 @@ public class ThreadingDemo {
         System.out.println("=".repeat(60));
         
         System.out.println("\n? Scenario: 3 Clients Accessing Server Simultaneously");
-        System.out.println("─────────────────────────────────────────────────");
+        System.out.println("=======================================");
         
         // Simulate Client 1: Employee checking leave
         Runnable client1 = () -> {
