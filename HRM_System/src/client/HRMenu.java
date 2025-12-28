@@ -434,7 +434,7 @@ public class HRMenu {
                                     totalPaid += record.getNetSalary();
                                 }
                                 
-                                System.out.println("==============================");
+                                System.out.println("===============================");
                             }
                             
                             System.out.println("\n Summary:");
