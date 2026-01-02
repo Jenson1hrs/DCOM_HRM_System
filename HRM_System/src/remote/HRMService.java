@@ -46,4 +46,12 @@ public interface HRMService extends Remote {
     String createSession(String userId) throws RemoteException;
     boolean validateSession(String token) throws RemoteException;
     String getUserFromSession(String token) throws RemoteException;
+    
+    // === SECURITY LOGS === 
+    /**
+     * Get all security logs from the system
+     * @return List of log entries with timestamp, userId, action, description, ipAddress, status
+     * @throws RemoteException
+     */
+    List<Map<String, String>> getSecurityLogs() throws RemoteException;
 }
