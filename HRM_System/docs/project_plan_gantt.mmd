@@ -1,0 +1,64 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "textColor": "#000000",
+    "primaryTextColor": "#000000",
+    "secondaryTextColor": "#000000",
+    "tertiaryTextColor": "#000000",
+    "titleColor": "#000000",
+    "sectionTextColor": "#000000",
+    "taskTextColor": "#000000",
+    "taskTextOutsideColor": "#000000"
+  },
+  "gantt": {
+    "titleTopMargin": 25,
+    "barHeight": 24,
+    "barGap": 10,
+    "topPadding": 60,
+    "leftPadding": 220,
+    "rightPadding": 80,
+    "gridLineStartPadding": 35,
+    "fontSize": 12,
+    "sectionFontSize": 13
+  },
+  "themeCSS": ".taskText,.taskTextOutsideLeft,.taskTextOutsideRight,.sectionTitle,.titleText,.tick text{fill:#000 !important;} .taskText{text-anchor:middle !important;} .taskTextOutsideRight{text-anchor:start !important;} .taskTextOutsideLeft{text-anchor:end !important;}"
+}}%%
+gantt
+title HRM System Project Plan (6 weeks / ~1.5 months)
+dateFormat  DD/MM/YYYY
+axisFormat  %d/%m/%Y
+excludes    weekends
+
+section Week 1 - Initiation
+Kickoff & scope alignment              :a1, 10/11/2025, 2d
+Requirements + user stories            :a2, after a1, 3d
+Project setup/build/run baseline       :a3, after a1, 3d
+Acceptance criteria + test plan draft  :a4, after a2, 2d
+
+section Week 2 - Architecture & Auth
+Service/API contract finalization      :b1, 17/11/2025, 3d
+Data model + validation rules          :b2, after b1, 2d
+Auth + role-based access flow          :b3, after b1, 5d
+
+section Week 3 - Employee Module
+Employee CRUD (server)                 :c1, 24/11/2025, 4d
+Employee UI (HR + Employee views)      :c2, after c1, 4d
+Profile + family members               :c3, after c2, 2d
+
+section Week 4 - Leave Module
+Leave request workflow (employee)      :d1, 01/12/2025, 3d
+Leave approval workflow (HR)           :d2, after d1, 3d
+Leave history/balance + UI polish      :d3, after d2, 4d
+
+section Week 5 - Payroll, Reports, Security
+Payroll calculations + salary records  :e1, 08/12/2025, 4d
+Reports generation/export              :e2, after e1, 3d
+Security/audit logging hardening       :e3, after e1, 3d
+
+section Week 6 - QA, UAT, Release
+System/regression testing              :f1, 15/12/2025, 4d
+Bug fix sprint                         :f2, after f1, 4d
+UAT + sign-off                         :f3, after f2, 2d
+Packaging + documentation + demo       :f4, after f3, 2d
+
+
