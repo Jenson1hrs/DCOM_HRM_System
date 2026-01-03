@@ -759,4 +759,158 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
 
         return employeeLeaves;
     }
+    
+    @Override
+    public List<Map<String, String>> getSecurityLogs() throws RemoteException {
+        List<Map<String, String>> logs = new ArrayList<>();
+
+        System.out.println("=== READING SECURITY LOGS ===");
+
+        try {
+            // FIXED: Use correct filename
+            File logFile = new File("security_audit.log");
+
+            if (!logFile.exists()) {
+                System.out.println("❌ Security log file not found:  " + logFile.getAbsolutePath());
+                return logs;
+            }
+
+            System.out.println("✓ Found log file: " + logFile.getAbsolutePath());
+            System.out.println("✓ File size: " + logFile.length() + " bytes");
+
+            BufferedReader reader = new BufferedReader(new FileReader(logFile));
+            String line;
+            int lineNumber = 0;
+
+            while ((line = reader. readLine()) != null) {
+                lineNumber++;
+
+                // Skip empty lines and separator lines
+                if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("??? ") || 
+                    line.contains("Log file: ") || line.contains("Last modified:") || 
+                    line. contains("Total entries:")) {
+                    continue;
+                }
+
+                try {
+                    Map<String, String> logEntry = parseSecurityAuditLine(line);
+
+                    if (logEntry != null && !logEntry.isEmpty()) {
+                        logs.add(logEntry);
+                    }
+
+                } catch (Exception e) {
+                    System.err.println("❌ Error parsing line " + lineNumber + ": " + line);
+                    e.printStackTrace();
+                }
+            }
+
+            reader.close();
+
+            System.out.println("✅ Loaded " + logs.size() + " security logs from " + lineNumber + " lines");
+
+        } catch (IOException e) {
+            System.err.println("❌ Error reading security logs: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return logs;
+    }
+
+    /**
+     * Parse a single log line from security_audit.log
+     * Format: [timestamp] USER=userId | ACTION=action | STATUS=status | DETAILS=details
+     */
+    private Map<String, String> parseSecurityAuditLine(String line) {
+        Map<String, String> logEntry = new HashMap<>();
+
+        try {
+            // Example:  [2025-12-27 00:46:41] USER=hr | ACTION=LOGIN_ATTEMPT | STATUS=SUCCESS | DETAILS=Source: RMI-Client
+
+            if (! line.contains("[") || !line.contains("]")) {
+                return null;
+            }
+
+            // Extract timestamp
+            int timestampStart = line.indexOf("[");
+            int timestampEnd = line.indexOf("]");
+            if (timestampStart == -1 || timestampEnd == -1) {
+                return null;
+            }
+
+            String timestamp = line.substring(timestampStart + 1, timestampEnd).trim();
+
+            // Extract the rest of the line
+            String remainder = line.substring(timestampEnd + 1).trim();
+
+            // Parse USER=, ACTION=, STATUS=, DETAILS=
+            String userId = extractField(remainder, "USER=");
+            String action = extractField(remainder, "ACTION=");
+            String status = extractField(remainder, "STATUS=");
+            String details = extractField(remainder, "DETAILS=");
+
+            // Extract IP address if present
+            String ipAddress = "N/A";
+            if (details.contains("Source: ")) {
+                String[] parts = details.split("Source:");
+                if (parts.length > 1) {
+                    ipAddress = parts[1].trim();
+                }
+            }
+
+            // Clean up action names for display
+            action = cleanupActionName(action);
+
+            logEntry.put("timestamp", timestamp);
+            logEntry.put("userId", userId);
+            logEntry.put("action", action);
+            logEntry.put("description", details);
+            logEntry.put("ipAddress", ipAddress);
+            logEntry.put("status", status);
+
+            return logEntry;
+
+        } catch (Exception e) {
+            System.err.println("❌ Exception parsing log line: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Extract field value from log line
+     * Example: "USER=hr | ACTION=LOGIN" -> extractField(line, "USER=") returns "hr"
+     */
+    private String extractField(String line, String fieldName) {
+        try {
+            int startIndex = line.indexOf(fieldName);
+            if (startIndex == -1) {
+                return "N/A";
+            }
+
+            startIndex += fieldName.length();
+
+            // Find the end (either " | " or end of line)
+            int endIndex = line.indexOf(" | ", startIndex);
+            if (endIndex == -1) {
+                endIndex = line. length();
+            }
+
+            return line.substring(startIndex, endIndex).trim();
+
+        } catch (Exception e) {
+            return "N/A";
+        }
+    }
+
+    /**
+     * Clean up action names for better display
+     */
+    private String cleanupActionName(String action) {
+        return action.replace("LOGIN_ATTEMPT", "Login")
+                     .replace("PASSWORD_CHANGE", "Password Change")
+                     .replace("DATA_ACCESS", "Data Access")
+                     .replace("SENSITIVE_ACTION", "Sensitive Action")
+                     .replace("SECURITY_ERROR", "Security Error")
+                     .replace("_", " ");
+    }
 }
