@@ -14,6 +14,7 @@ import java.util.Map;
 public interface HRMService extends Remote {
     // === HR STAFF METHODS ===
     String registerEmployee(String firstName, String lastName, String icPassport) throws RemoteException;
+    String registerHRUser(String hrUserId, String newHRUserId, String password) throws RemoteException;
     List<Employee> getAllEmployees() throws RemoteException;
     String generateYearlyReport(String employeeId) throws RemoteException;
     
@@ -39,6 +40,7 @@ public interface HRMService extends Remote {
     
     // === AUTHENTICATION ===
     boolean authenticate(String userId, String password) throws RemoteException;
+    boolean isHRUser(String userId) throws RemoteException;
     
     boolean changePassword(String userId, String oldPassword, String newPassword) throws RemoteException;
     

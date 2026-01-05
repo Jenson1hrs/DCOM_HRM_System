@@ -185,10 +185,11 @@ public class SalaryPanel extends JPanel {
         
         // Double-click to view details
         historyTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event. MouseEvent evt) {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
                 if (evt.getClickCount() == 2) {
-                    int row = historyTable.getSelectedRow();
+                    int row = historyTable.rowAtPoint(evt.getPoint());
                     if (row >= 0) {
+                        historyTable.setRowSelectionInterval(row, row);
                         showHistoryDetails(row);
                     }
                 }
@@ -407,7 +408,7 @@ public class SalaryPanel extends JPanel {
                                 "Working Days: %d / 22\n" +
                                 "Paid Leave: %d days\n" +
                                 "Unpaid Leave: %d days\n" +
-                                "Deductions: RM %. 2f\n" +
+                                "Deductions: RM %.2f\n" +
                                 "---------------------\n" +
                                 "Net Salary: RM %.2f\n\n" +
                                 "Status: %s\n" +

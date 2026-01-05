@@ -89,7 +89,7 @@ private void initComponents() {
     contentPanel.add(new LeaveManagementPanel(hrService), "leaves");
     contentPanel.add(new PayrollManagementPanel(hrService, payrollService), "payroll");
     contentPanel.add(new ReportsPanel(hrService, payrollService), "reports");        // NEW
-    contentPanel.add(new SecurityLogsPanel(hrService), "security");                   // NEW
+    contentPanel.add(new SecurityLogsPanel(hrService, userId), "security");                   // NEW
     
     // Layout
     add(topBar, BorderLayout.NORTH);
@@ -197,7 +197,7 @@ private void initComponents() {
         JLabel unpaidEmpLabel = (JLabel) dashboardPanel.getClientProperty("unpaidEmpLabel");
         JLabel totalPayrollLabel = (JLabel) dashboardPanel.getClientProperty("totalPayrollLabel");
         
-        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             int totalEmployees = 0;
             int pendingLeaves = 0;
             int unpaidEmployees = 0;

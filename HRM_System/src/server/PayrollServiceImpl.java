@@ -10,10 +10,10 @@ import common.SalaryRecord;
 import common.Employee;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.rmi.Naming;
 import java.util.*;
 import java.text.SimpleDateFormat;
 import java.util.concurrent.ExecutorService;
+import java.io.*;
 
 public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollService {
     private HRMService hrService;
@@ -25,9 +25,25 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
         this.hrService = hrService;
         this.threadPool = threadPool;  // Store thread pool
         this.salaryRecords = new HashMap<>();
-        initializeSampleData();
         
-        System.out.println(" Payroll Service ready with thread pool support");
+        try {
+            // Try to load existing data first
+            loadDataFromFile();
+            System.out.println("✅ Loaded existing payroll data from file");
+        } catch (Exception e) {
+            System.out.println("⚠️  Could not load saved payroll data: " + e.getMessage());
+            System.out.println("📝 Creating fresh payroll data...");
+            // Initialize sample data if no saved data exists
+            initializeSampleData();
+            // Save the initial data
+            try {
+                saveDataToFile();
+            } catch (IOException saveError) {
+                System.out.println("⚠️  Could not save initial payroll data: " + saveError.getMessage());
+            }
+        }
+        
+        System.out.println("💰 Payroll Service ready with thread pool support");
     }
     
     private void initializeSampleData() {
@@ -120,6 +136,13 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
                     record = new SalaryRecord(empId, monthYear, emp.getMonthlySalary());
                     record.setWorkingDays(22); // Default
                     salaryRecords.put(key, record);
+                    
+                    // Save to file after creating new record
+                    try {
+                        saveDataToFile();
+                    } catch (IOException e) {
+                        System.err.println("⚠️  Could not save payroll data after creating record: " + e.getMessage());
+                    }
                 }
             } catch (Exception e) {
                 System.err.println("Error creating salary record: " + e.getMessage());
@@ -158,6 +181,13 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
             if (record != null && "UNPAID".equals(record.getPaymentStatus())) {
                 record.setPaymentStatus("PAID", processedBy);
                 System.out.println("✅ Background payment completed: " + empId + " for " + monthYear);
+                
+                // Save to file after payment status change
+                try {
+                    saveDataToFile();
+                } catch (IOException e) {
+                    System.err.println("⚠️  Could not save payroll data after payment: " + e.getMessage());
+                }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -247,6 +277,40 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
             
             System.out.println("🔄 Synced leave for " + empId + ": " + 
                               leaveDays + " days (" + (isPaid ? "PAID" : "UNPAID") + ")");
+            
+            // Save to file after leave sync
+            try {
+                saveDataToFile();
+            } catch (IOException e) {
+                System.err.println("⚠️  Could not save payroll data after leave sync: " + e.getMessage());
+            }
+        }
+    }
+    
+    // ===== FILE PERSISTENCE METHODS =====
+    
+    private void saveDataToFile() throws IOException {
+        try (ObjectOutputStream oos = new ObjectOutputStream(
+                new FileOutputStream("payroll_data.dat"))) {
+            oos.writeObject(salaryRecords);
+            System.out.println("💾 Payroll data saved to file: payroll_data.dat");
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    private void loadDataFromFile() throws IOException, ClassNotFoundException {
+        File file = new File("payroll_data.dat");
+        if (!file.exists()) {
+            System.out.println("📄 No saved payroll data file found. Starting fresh.");
+            return;
+        }
+        
+        try (ObjectInputStream ois = new ObjectInputStream(
+                new FileInputStream("payroll_data.dat"))) {
+            salaryRecords = (Map<String, SalaryRecord>) ois.readObject();
+            
+            System.out.println("📂 Loaded payroll data:");
+            System.out.println("   Salary Records: " + salaryRecords.size());
         }
     }
 }
