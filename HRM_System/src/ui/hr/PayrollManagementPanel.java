@@ -417,9 +417,14 @@ public class PayrollManagementPanel extends JPanel {
                     detailsBuilder.append("Month: ").append(record.getFormattedMonth()).append("\n");
                     detailsBuilder. append("Base Salary: RM ").append(String.format("%.2f", record.getBaseSalary())).append("\n");
                     detailsBuilder.append("Working Days: ").append(record.getWorkingDays()).append("/22\n");
-                    detailsBuilder.append("Paid Leave: ").append(record.getPaidLeaveDays()).append(" days\n");
-                    detailsBuilder.append("Unpaid Leave: ").append(record.getUnpaidLeaveDays()).append(" days\n");
+                    detailsBuilder.append("Total Leaves: ").append(record.getTotalLeaves()).append(" days\n");
+                    detailsBuilder.append("  - Paid Leave: ").append(record.getDisplayPaidLeaveDays()).append(" days\n");
+                    detailsBuilder.append("  - Unpaid Leave: ").append(record.getDisplayUnpaidLeaveDays()).append(" days\n");
                     detailsBuilder.append("Deductions: RM ").append(String.format("%.2f", record.getDeductions())).append("\n");
+                    if (record.getTotalLeaves() > 4) {
+                        detailsBuilder.append("  (First 4 leaves paid, ").append(record.getTotalLeaves() - 4)
+                                      .append(" unpaid leaves @ RM50 each)\n");
+                    }
                     detailsBuilder.append("---------------------\n");
                     detailsBuilder.append("Net Salary: RM ").append(String.format("%.2f", record.getNetSalary())).append("\n\n");
                     detailsBuilder.append("Confirm payment? ");
@@ -522,9 +527,14 @@ public class PayrollManagementPanel extends JPanel {
                         detailsBuilder.append("Month: ").append(record.getFormattedMonth()).append("\n");
                         detailsBuilder.append("Base Salary: RM ").append(String.format("%.2f", record.getBaseSalary())).append("\n");
                         detailsBuilder.append("Working Days: ").append(record.getWorkingDays()).append("/22\n");
-                        detailsBuilder.append("Paid Leave: ").append(record.getPaidLeaveDays()).append(" days\n");
-                        detailsBuilder.append("Unpaid Leave: ").append(record.getUnpaidLeaveDays()).append(" days\n");
+                        detailsBuilder.append("Total Leaves: ").append(record.getTotalLeaves()).append(" days\n");
+                        detailsBuilder.append("  - Paid Leave: ").append(record.getDisplayPaidLeaveDays()).append(" days\n");
+                        detailsBuilder.append("  - Unpaid Leave: ").append(record.getDisplayUnpaidLeaveDays()).append(" days\n");
                         detailsBuilder.append("Deductions: RM ").append(String.format("%.2f", record. getDeductions())).append("\n");
+                        if (record.getTotalLeaves() > 4) {
+                            detailsBuilder.append("  (First 4 leaves paid, ").append(record.getTotalLeaves() - 4)
+                                          .append(" unpaid leaves @ RM50 each)\n");
+                        }
                         detailsBuilder.append("Net Salary: RM ").append(String.format("%.2f", record.getNetSalary())).append("\n");
                         detailsBuilder. append("Status: ").append(record.getPaymentStatus()).append("\n");
                         detailsBuilder. append("Paid On: ").append(paymentDate).append("\n");

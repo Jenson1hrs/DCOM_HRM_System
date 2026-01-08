@@ -256,6 +256,7 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
     
     // ===== LEAVE SYNC METHOD (NEW) =====
     
+    @Override
     public void syncLeaveWithSalary(String empId, String monthYear, int leaveDays, boolean isPaid) 
             throws RemoteException {
         
@@ -283,6 +284,29 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
                 saveDataToFile();
             } catch (IOException e) {
                 System.err.println("⚠️  Could not save payroll data after leave sync: " + e.getMessage());
+            }
+        }
+    }
+    
+    @Override
+    public void removeLeaveFromSalary(String empId, String monthYear, int leaveDays, boolean isPaid) 
+            throws RemoteException {
+        
+        String key = empId + "_" + monthYear;
+        SalaryRecord record = salaryRecords.get(key);
+        
+        if (record != null) {
+            // Use the removeLeave helper method from SalaryRecord
+            record.removeLeave(leaveDays, isPaid);
+            
+            System.out.println("🔄 Removed leave for " + empId + ": " + 
+                              leaveDays + " days (" + (isPaid ? "PAID" : "UNPAID") + ")");
+            
+            // Save to file after leave removal
+            try {
+                saveDataToFile();
+            } catch (IOException e) {
+                System.err.println("⚠️  Could not save payroll data after leave removal: " + e.getMessage());
             }
         }
     }

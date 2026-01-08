@@ -769,6 +769,50 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
 
         String[] parts = currentStatus.split("\\|");
         if (parts.length >= 4) {
+            String employeeId = parts[0];
+            int leaveDays = Integer.parseInt(parts[1]);
+            String originalStatus = (parts.length > 3) ? parts[3] : "";
+            
+            // Check if status is being changed to "Rejected"
+            boolean isRejected = status.contains("Rejected") || status.contains("rejected");
+            boolean wasPending = originalStatus.contains("Pending") || originalStatus.contains("pending");
+            boolean wasApproved = originalStatus.contains("Approved") || originalStatus.contains("approved");
+            
+            // If rejecting a leave (whether pending or approved), remove it from payroll and restore leave balance
+            if (isRejected && (wasPending || wasApproved)) {
+                Employee emp = employees.get(employeeId);
+                if (emp != null) {
+                    // Determine if it was paid or unpaid leave
+                    // Unpaid leaves have format: "employeeId|days|reason|Unpaid|Pending"
+                    // Paid leaves have format: "employeeId|days|reason|Pending"
+                    boolean isPaidLeave = !currentStatus.contains("|Unpaid|");
+                    
+                    // Remove leave from payroll
+                    try {
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
+                        String currentMonth = sdf.format(new Date());
+                        
+                        PayrollService payrollService = (PayrollService) 
+                            Naming.lookup("rmi://localhost:1098/PayrollService");
+                        
+                        // Remove leave from salary calculation
+                        payrollService.removeLeaveFromSalary(employeeId, currentMonth, leaveDays, isPaidLeave);
+                        
+                        // Restore leave balance if it was a paid leave (from leave balance)
+                        if (isPaidLeave) {
+                            emp.setLeaveBalance(emp.getLeaveBalance() + leaveDays);
+                            System.out.println("✅ Restored " + leaveDays + " days to leave balance for " + employeeId);
+                        }
+                        
+                        System.out.println("✅ Removed " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
+                                          " leave(s) from payroll for " + employeeId);
+                        
+                    } catch (Exception e) {
+                        System.out.println("⚠️  Could not remove leave from payroll: " + e.getMessage());
+                    }
+                }
+            }
+            
             // Reconstruct with new status
             String newStatus = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + status + " by " + processedBy;
             leaveApplications.put(applicationId, newStatus);
