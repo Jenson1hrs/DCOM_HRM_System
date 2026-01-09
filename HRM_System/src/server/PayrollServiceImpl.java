@@ -29,21 +29,21 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
         try {
             // Try to load existing data first
             loadDataFromFile();
-            System.out.println("✅ Loaded existing payroll data from file");
+            System.out.println(" Loaded existing payroll data from file");
         } catch (Exception e) {
-            System.out.println("⚠️  Could not load saved payroll data: " + e.getMessage());
-            System.out.println("📝 Creating fresh payroll data...");
+            System.out.println("️  Could not load saved payroll data: " + e.getMessage());
+            System.out.println(" Creating fresh payroll data...");
             // Initialize sample data if no saved data exists
             initializeSampleData();
             // Save the initial data
             try {
                 saveDataToFile();
             } catch (IOException saveError) {
-                System.out.println("⚠️  Could not save initial payroll data: " + saveError.getMessage());
+                System.out.println("️  Could not save initial payroll data: " + saveError.getMessage());
             }
         }
         
-        System.out.println("💰 Payroll Service ready with thread pool support");
+        System.out.println(" Payroll Service ready with thread pool support");
     }
     
     private void initializeSampleData() {
@@ -76,11 +76,11 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
                 salaryRecords.put(key, record);
             }
             
-            System.out.println("💰 Payroll Service initialized with " + 
+            System.out.println(" Payroll Service initialized with " + 
                               salaryRecords.size() + " salary records");
             
         } catch (Exception e) {
-            System.out.println("⚠️  Could not initialize payroll data: " + e.getMessage());
+            System.out.println("️  Could not initialize payroll data: " + e.getMessage());
         }
     }
     
@@ -141,7 +141,7 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
                     try {
                         saveDataToFile();
                     } catch (IOException e) {
-                        System.err.println("⚠️  Could not save payroll data after creating record: " + e.getMessage());
+                        System.err.println("  Could not save payroll data after creating record: " + e.getMessage());
                     }
                 }
             } catch (Exception e) {
@@ -156,7 +156,7 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
     public boolean processSalaryPayment(String empId, String monthYear, String processedBy) 
             throws RemoteException {
         
-        System.out.println("💰 Salary payment requested for " + empId + " (processing async)");
+        System.out.println(" Salary payment requested for " + empId + " (processing async)");
         
         // Process in background thread
         threadPool.submit(() -> {
@@ -186,7 +186,7 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
                 try {
                     saveDataToFile();
                 } catch (IOException e) {
-                    System.err.println("⚠️  Could not save payroll data after payment: " + e.getMessage());
+                    System.err.println("️  Could not save payroll data after payment: " + e.getMessage());
                 }
             }
         } catch (InterruptedException e) {
@@ -276,14 +276,14 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
             // Use the addLeave helper method from SalaryRecord
             record.addLeave(leaveDays, isPaid);
             
-            System.out.println("🔄 Synced leave for " + empId + ": " + 
+            System.out.println(" Synced leave for " + empId + ": " + 
                               leaveDays + " days (" + (isPaid ? "PAID" : "UNPAID") + ")");
             
             // Save to file after leave sync
             try {
                 saveDataToFile();
             } catch (IOException e) {
-                System.err.println("⚠️  Could not save payroll data after leave sync: " + e.getMessage());
+                System.err.println("️  Could not save payroll data after leave sync: " + e.getMessage());
             }
         }
     }
@@ -299,7 +299,7 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
             // Use the removeLeave helper method from SalaryRecord
             record.removeLeave(leaveDays, isPaid);
             
-            System.out.println("🔄 Removed leave for " + empId + ": " + 
+            System.out.println(" Removed leave for " + empId + ": " + 
                               leaveDays + " days (" + (isPaid ? "PAID" : "UNPAID") + ")");
             
             // Save to file after leave removal
@@ -317,7 +317,7 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
         try (ObjectOutputStream oos = new ObjectOutputStream(
                 new FileOutputStream("payroll_data.dat"))) {
             oos.writeObject(salaryRecords);
-            System.out.println("💾 Payroll data saved to file: payroll_data.dat");
+            System.out.println(" Payroll data saved to file: payroll_data.dat");
         }
     }
     
@@ -325,7 +325,7 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
     private void loadDataFromFile() throws IOException, ClassNotFoundException {
         File file = new File("payroll_data.dat");
         if (!file.exists()) {
-            System.out.println("📄 No saved payroll data file found. Starting fresh.");
+            System.out.println(" No saved payroll data file found. Starting fresh.");
             return;
         }
         
@@ -333,7 +333,7 @@ public class PayrollServiceImpl extends UnicastRemoteObject implements PayrollSe
                 new FileInputStream("payroll_data.dat"))) {
             salaryRecords = (Map<String, SalaryRecord>) ois.readObject();
             
-            System.out.println("📂 Loaded payroll data:");
+            System.out.println(" Loaded payroll data:");
             System.out.println("   Salary Records: " + salaryRecords.size());
         }
     }

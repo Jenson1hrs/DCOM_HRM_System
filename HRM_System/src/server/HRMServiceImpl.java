@@ -56,7 +56,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             
             // Initialize default HR user
             hrUsers.put("hr", PasswordUtil.hashPassword("hr123"));
-            System.out.println("✅ Default HR user 'hr' initialized");
+            System.out.println(" Default HR user 'hr' initialized");
                 
             System.out.println("🧵 HRM Service ready with thread pool support");
             
@@ -64,13 +64,13 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             try {
                 saveDataToFile();
             } catch (IOException saveError) {
-                System.out.println("⚠️  Could not save initial data: " + saveError.getMessage());
+                System.out.println("️  Could not save initial data: " + saveError.getMessage());
             }
         }
 
-        System.out.println("\n✅ HRM Service ready!");
+        System.out.println("\n HRM Service ready!");
         System.out.println("   HR Login: hr / hr123");
-        System.out.println("   🔒 Password security: ENABLED");
+        System.out.println("    Password security: ENABLED");
     }
     
     // Session Expiry
@@ -172,17 +172,17 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         // ===== VALIDATION FIRST =====
         if (!InputValidator.isValidName(firstName)) {
             SecurityLogger.logError("HR", "INVALID_INPUT", "Invalid first name: " + firstName);
-            return "❌ Invalid first name! Use 2-50 letters only.";
+            return " Invalid first name! Use 2-50 letters only.";
         }
 
         if (!InputValidator.isValidName(lastName)) {
             SecurityLogger.logError("HR", "INVALID_INPUT", "Invalid last name: " + lastName);
-            return "❌ Invalid last name! Use 2-50 letters only.";
+            return " Invalid last name! Use 2-50 letters only.";
         }
 
         if (!InputValidator.isValidIcPassport(icPassport)) {
             SecurityLogger.logError("HR", "INVALID_INPUT", "Invalid IC/Passport: " + icPassport);
-            return "❌ Invalid IC/Passport! Use 7-20 alphanumeric characters.";
+            return " Invalid IC/Passport! Use 7-20 alphanumeric characters.";
         }
 
         // Sanitize inputs
@@ -212,17 +212,17 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         try {
             saveDataToFile();
         } catch (IOException e) {
-            System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+            System.out.println("️  Could not auto-save: " + e.getMessage());
         }
 
         // Log successful registration
         SecurityLogger.logSensitiveAction("HR", "REGISTER_EMPLOYEE", empId);
 
-        return "✅ Employee registered!\n" +
+        return " Employee registered!\n" +
                "   ID: " + empId + "\n" +
                "   Name: " + firstName + " " + lastName + "\n" +
                "   Temporary password: " + plainPassword + "\n" +
-               "   ⚠️  Change this password on first login!\n" +
+               "   ️  Change this password on first login!\n" +
                "   Default salary: RM3000.00";
     }
     
@@ -232,13 +232,13 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         if (hrUserId == null || !hrUsers.containsKey(hrUserId)) {
             SecurityLogger.logError(hrUserId != null ? hrUserId : "UNKNOWN", "UNAUTHORIZED_ACCESS", 
                 "Attempted to register HR user without HR privileges");
-            return "❌ Access Denied! Only HR users can register new HR accounts.";
+            return " Access Denied! Only HR users can register new HR accounts.";
         }
         
         // ===== VALIDATION =====
         if (newHRUserId == null || newHRUserId.trim().isEmpty()) {
             SecurityLogger.logError(hrUserId, "INVALID_INPUT", "Empty HR user ID");
-            return "❌ Invalid HR User ID! User ID cannot be empty.";
+            return " Invalid HR User ID! User ID cannot be empty.";
         }
         
         newHRUserId = newHRUserId.trim().toLowerCase();
@@ -246,13 +246,13 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         // Check if HR user already exists
         if (hrUsers.containsKey(newHRUserId)) {
             SecurityLogger.logError(hrUserId, "DUPLICATE_USER", "HR user already exists: " + newHRUserId);
-            return "❌ HR User ID already exists! Please choose a different ID.";
+            return " HR User ID already exists! Please choose a different ID.";
         }
         
         // Validate password
         if (password == null || password.length() < 6) {
             SecurityLogger.logError(hrUserId, "INVALID_INPUT", "Password too short");
-            return "❌ Invalid password! Password must be at least 6 characters long.";
+            return " Invalid password! Password must be at least 6 characters long.";
         }
         
         // Sanitize inputs
@@ -266,16 +266,16 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         try {
             saveDataToFile();
         } catch (IOException e) {
-            System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+            System.out.println("️  Could not auto-save: " + e.getMessage());
         }
         
         // Log successful registration
         SecurityLogger.logSensitiveAction(hrUserId, "REGISTER_HR_USER", newHRUserId);
         
-        return "✅ HR User registered successfully!\n" +
+        return " HR User registered successfully!\n" +
                "   HR User ID: " + newHRUserId + "\n" +
                "   Password: " + password + "\n" +
-               "   ⚠️  Save these credentials securely!";
+               "   ️  Save these credentials securely!";
     }
     
     @Override
@@ -286,11 +286,11 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     
     @Override
     public String generateYearlyReport(String employeeId) throws RemoteException {
-        System.out.println("📊 Yearly report requested for: " + employeeId);
+        System.out.println(" Yearly report requested for: " + employeeId);
 
         // Check if employee exists first (fast check)
         if (!employees.containsKey(employeeId)) {
-            return "❌ Employee not found!";
+            return " Employee not found!";
         }
 
         // Log the request
@@ -301,12 +301,12 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             try {
                 generateReportInBackground(employeeId);
             } catch (Exception e) {
-                System.err.println("❌ Error generating report for " + employeeId + ": " + e.getMessage());
+                System.err.println(" Error generating report for " + employeeId + ": " + e.getMessage());
             }
         });
 
         // Return immediately - report will be generated in background
-        return "✅ Yearly report generation started for employee: " + employeeId + "\n" +
+        return " Yearly report generation started for employee: " + employeeId + "\n" +
                "   Report ID: RPT" + System.currentTimeMillis() + "\n" +
                "   Status: Processing in background...\n" +
                "   Yearly Report Saved in File!.\n";
@@ -315,14 +315,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     // Private method that runs in background thread
     private void generateReportInBackground(String employeeId) {
         try {
-            System.out.println("🧵 Background thread started for report: " + employeeId);
+            System.out.println(" Background thread started for report: " + employeeId);
 
             // Simulate complex/long report generation
             Thread.sleep(3000); // 3 second delay
 
             Employee emp = employees.get(employeeId);
             if (emp == null) {
-                System.out.println("❌ Employee not found in background: " + employeeId);
+                System.out.println(" Employee not found in background: " + employeeId);
                 return;
             }
 
@@ -384,15 +384,15 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
                              new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".txt";
             saveReportToFile(filename, report.toString());
 
-            System.out.println("✅ Background report completed: " + employeeId);
+            System.out.println(" Background report completed: " + employeeId);
             System.out.println("   Saved to: " + filename);
             System.out.println("   Thread: " + Thread.currentThread().getName());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("❌ Report generation interrupted for: " + employeeId);
+            System.err.println(" Report generation interrupted for: " + employeeId);
         } catch (Exception e) {
-            System.err.println("❌ Error in background report generation: " + e.getMessage());
+            System.err.println(" Error in background report generation: " + e.getMessage());
         }
     }
 
@@ -410,9 +410,9 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
                 writer.println(content);
             }
 
-            System.out.println("💾 Report saved to: " + file.getAbsolutePath());
+            System.out.println(" Report saved to: " + file.getAbsolutePath());
         } catch (IOException e) {
-            System.err.println("❌ Could not save report to file: " + e.getMessage());
+            System.err.println(" Could not save report to file: " + e.getMessage());
         }
     }
     
@@ -766,14 +766,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             if (isApproved && wasPending && emp != null) {
                 // For paid leave, check if balance is still sufficient
                 if (isPaidLeave && emp.getLeaveBalance() < leaveDays) {
-                    System.out.println("⚠️  Cannot approve leave: Insufficient balance for " + employeeId);
+                    System.out.println("️  Cannot approve leave: Insufficient balance for " + employeeId);
                     return false; // Cannot approve if balance is insufficient
                 }
                 
                 // Deduct leave balance only for paid leave
                 if (isPaidLeave) {
                     emp.setLeaveBalance(emp.getLeaveBalance() - leaveDays);
-                    System.out.println("✅ Deducted " + leaveDays + " days from leave balance for " + employeeId);
+                    System.out.println(" Deducted " + leaveDays + " days from leave balance for " + employeeId);
                 }
                 
                 // Sync with payroll (for both paid and unpaid leave)
@@ -786,11 +786,11 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
                     
                     // Sync leave with payroll
                     payrollService.syncLeaveWithSalary(employeeId, currentMonth, leaveDays, isPaidLeave);
-                    System.out.println("✅ Synced " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
+                    System.out.println(" Synced " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
                                       " leave(s) with payroll for " + employeeId);
                     
                 } catch (Exception e) {
-                    System.out.println("⚠️  Could not sync leave with payroll: " + e.getMessage());
+                    System.out.println("️  Could not sync leave with payroll: " + e.getMessage());
                 }
             }
             
@@ -810,14 +810,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
                     // Restore leave balance if it was a paid leave
                     if (isPaidLeave) {
                         emp.setLeaveBalance(emp.getLeaveBalance() + leaveDays);
-                        System.out.println("✅ Restored " + leaveDays + " days to leave balance for " + employeeId);
+                        System.out.println(" Restored " + leaveDays + " days to leave balance for " + employeeId);
                     }
                     
-                    System.out.println("✅ Removed " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
+                    System.out.println(" Removed " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
                                       " leave(s) from payroll for " + employeeId);
                     
                 } catch (Exception e) {
-                    System.out.println("⚠️  Could not remove leave from payroll: " + e.getMessage());
+                    System.out.println("️  Could not remove leave from payroll: " + e.getMessage());
                 }
             }
             
@@ -873,12 +873,12 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             File logFile = new File("security_audit.log");
 
             if (!logFile.exists()) {
-                System.out.println("❌ Security log file not found:  " + logFile.getAbsolutePath());
+                System.out.println(" Security log file not found:  " + logFile.getAbsolutePath());
                 return logs;
             }
 
-            System.out.println("✓ Found log file: " + logFile.getAbsolutePath());
-            System.out.println("✓ File size: " + logFile.length() + " bytes");
+            System.out.println(" Found log file: " + logFile.getAbsolutePath());
+            System.out.println(" File size: " + logFile.length() + " bytes");
 
             BufferedReader reader = new BufferedReader(new FileReader(logFile));
             String line;
@@ -902,17 +902,17 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
                     }
 
                 } catch (Exception e) {
-                    System.err.println("❌ Error parsing line " + lineNumber + ": " + line);
+                    System.err.println(" Error parsing line " + lineNumber + ": " + line);
                     e.printStackTrace();
                 }
             }
 
             reader.close();
 
-            System.out.println("✅ Loaded " + logs.size() + " security logs from " + lineNumber + " lines");
+            System.out.println(" Loaded " + logs.size() + " security logs from " + lineNumber + " lines");
 
         } catch (IOException e) {
-            System.err.println("❌ Error reading security logs: " + e.getMessage());
+            System.err.println(" Error reading security logs: " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -973,7 +973,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             return logEntry;
 
         } catch (Exception e) {
-            System.err.println("❌ Exception parsing log line: " + e.getMessage());
+            System.err.println(" Exception parsing log line: " + e.getMessage());
             return null;
         }
     }
