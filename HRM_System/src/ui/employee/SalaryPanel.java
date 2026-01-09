@@ -19,6 +19,7 @@ public class SalaryPanel extends JPanel {
     private JLabel monthLabel;
     private JLabel baseSalaryLabel;
     private JLabel workingDaysLabel;
+    private JLabel totalLeavesLabel;
     private JLabel paidLeaveLabel;
     private JLabel unpaidLeaveLabel;
     private JLabel deductionsLabel;
@@ -93,19 +94,25 @@ public class SalaryPanel extends JPanel {
         monthLabel = new JLabel("Loading...");
         baseSalaryLabel = new JLabel("Loading...");
         workingDaysLabel = new JLabel("Loading...");
+        totalLeavesLabel = new JLabel("Loading...");
         paidLeaveLabel = new JLabel("Loading...");
-        unpaidLeaveLabel = new JLabel("Loading.. .");
+        unpaidLeaveLabel = new JLabel("Loading...");
         deductionsLabel = new JLabel("Loading...");
         netSalaryLabel = new JLabel("Loading...");
         statusLabel = new JLabel("Loading...");
         paidOnLabel = new JLabel("Loading...");
         
+        // Ensure labels are visible
+        baseSalaryLabel.setVisible(true);
+        baseSalaryLabel.setOpaque(false);
+        
         int row = 0;
         addSalaryField(detailsPanel, gbc, row++, "Month:", monthLabel);
         addSalaryField(detailsPanel, gbc, row++, "Base Salary:", baseSalaryLabel);
         addSalaryField(detailsPanel, gbc, row++, "Working Days:", workingDaysLabel);
-        addSalaryField(detailsPanel, gbc, row++, "Paid Leave:", paidLeaveLabel);
-        addSalaryField(detailsPanel, gbc, row++, "Unpaid Leave:", unpaidLeaveLabel);
+        addSalaryField(detailsPanel, gbc, row++, "Total Leaves:", totalLeavesLabel);
+        addSalaryField(detailsPanel, gbc, row++, "  - Paid Leave:", paidLeaveLabel);
+        addSalaryField(detailsPanel, gbc, row++, "  - Unpaid Leave:", unpaidLeaveLabel);
         addSalaryField(detailsPanel, gbc, row++, "Deductions:", deductionsLabel);
         
         // Separator
@@ -185,10 +192,11 @@ public class SalaryPanel extends JPanel {
         
         // Double-click to view details
         historyTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event. MouseEvent evt) {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
                 if (evt.getClickCount() == 2) {
-                    int row = historyTable.getSelectedRow();
+                    int row = historyTable.rowAtPoint(evt.getPoint());
                     if (row >= 0) {
+                        historyTable.setRowSelectionInterval(row, row);
                         showHistoryDetails(row);
                     }
                 }
@@ -266,10 +274,18 @@ public class SalaryPanel extends JPanel {
                     
                     if (record != null) {
                         monthLabel.setText(record.getFormattedMonth());
-                        baseSalaryLabel.setText("RM " + String.format("%.2f", record.getBaseSalary()));
+                        // Format base salary with proper formatting
+                        double baseSalary = record.getBaseSalary();
+                        baseSalaryLabel.setText("RM " + String.format("%.2f", baseSalary));
+                        baseSalaryLabel.setVisible(true);
+                        baseSalaryLabel.revalidate();
+                        baseSalaryLabel.repaint();
                         workingDaysLabel. setText(record.getWorkingDays() + " / 22 days");
-                        paidLeaveLabel.setText(record.getPaidLeaveDays() + " days");
-                        unpaidLeaveLabel.setText(record.getUnpaidLeaveDays() + " days");
+                        int totalLeaves = record.getTotalLeaves();
+                        totalLeavesLabel.setText(totalLeaves + " days" + 
+                            (totalLeaves > 4 ? " (First 4 paid, " + (totalLeaves - 4) + " @ RM50 each)" : ""));
+                        paidLeaveLabel.setText(record.getDisplayPaidLeaveDays() + " days");
+                        unpaidLeaveLabel.setText(record.getDisplayUnpaidLeaveDays() + " days");
                         deductionsLabel.setText("RM " + String.format("%.2f", record.getDeductions()));
                         netSalaryLabel. setText("RM " + String. format("%.2f", record. getNetSalary()));
                         
@@ -287,6 +303,7 @@ public class SalaryPanel extends JPanel {
                         monthLabel. setText("No record found");
                         baseSalaryLabel.setText("N/A");
                         workingDaysLabel.setText("N/A");
+                        totalLeavesLabel.setText("N/A");
                         paidLeaveLabel.setText("N/A");
                         unpaidLeaveLabel.setText("N/A");
                         deductionsLabel. setText("N/A");
@@ -401,13 +418,15 @@ public class SalaryPanel extends JPanel {
                                 processedBy = record.getProcessedBy();
                             }
                             
+                            int totalLeaves = record.getTotalLeaves();
                             String details = String. format(
                                 "Salary Details - %s\n\n" +
                                 "Base Salary: RM %.2f\n" +
                                 "Working Days: %d / 22\n" +
-                                "Paid Leave: %d days\n" +
-                                "Unpaid Leave: %d days\n" +
-                                "Deductions: RM %. 2f\n" +
+                                "Total Leaves: %d days\n" +
+                                "  - Paid Leave: %d days\n" +
+                                "  - Unpaid Leave: %d days\n" +
+                                "Deductions: RM %.2f%s\n" +
                                 "---------------------\n" +
                                 "Net Salary: RM %.2f\n\n" +
                                 "Status: %s\n" +
@@ -416,9 +435,11 @@ public class SalaryPanel extends JPanel {
                                 record.getFormattedMonth(),
                                 record.getBaseSalary(),
                                 record.getWorkingDays(),
-                                record.getPaidLeaveDays(),
-                                record.getUnpaidLeaveDays(),
+                                totalLeaves,
+                                record.getDisplayPaidLeaveDays(),
+                                record.getDisplayUnpaidLeaveDays(),
                                 record.getDeductions(),
+                                totalLeaves > 4 ? " (First 4 paid, " + (totalLeaves - 4) + " @ RM50 each)" : "",
                                 record.getNetSalary(),
                                 record.getPaymentStatus(),
                                 paidOn,

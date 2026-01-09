@@ -68,4 +68,14 @@ public interface PayrollService extends Remote {
      */
     void syncLeaveWithSalary(String empId, String monthYear, int leaveDays, boolean isPaid) 
             throws RemoteException;
+    
+    /**
+     * Remove leave from salary calculation (when leave is rejected)
+     * @param empId Employee ID
+     * @param monthYear Month in format "YYYY-MM"
+     * @param leaveDays Number of leave days to remove
+     * @param isPaid True if paid leave, false if unpaid
+     */
+    void removeLeaveFromSalary(String empId, String monthYear, int leaveDays, boolean isPaid) 
+            throws RemoteException;
 }

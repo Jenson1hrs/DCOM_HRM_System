@@ -116,7 +116,7 @@ public class LoginFrame extends JFrame {
         JPanel infoPanel = new JPanel();
         infoPanel.setBackground(new Color(236, 240, 241));
         infoPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        JLabel infoLabel = new JLabel("<html><center>Default Credentials: <br>HR:  hr / hr123<br>Employee:  EMP001 / password123</center></html>");
+        JLabel infoLabel = new JLabel("<html><center>Default Credentials: <br>HR:  hr / hr123</center></html>");
         infoLabel.setFont(new Font("Arial", Font.PLAIN, 11));
         infoLabel. setForeground(new Color(127, 140, 141));
         infoPanel.add(infoLabel);
@@ -209,11 +209,30 @@ public class LoginFrame extends JFrame {
     
     private void openDashboard(String userId) {
         SwingUtilities.invokeLater(() -> {
-            if (userId. equalsIgnoreCase("hr")) {
-                new HRDashboard(hrService, payrollService, userId).setVisible(true);
-            } else {
-                new EmployeeDashboard(hrService, payrollService, userId).setVisible(true);
-            }
+            // Check if user is an HR user
+            SwingWorker<Boolean, Void> checkWorker = new SwingWorker<Boolean, Void>() {
+                @Override
+                protected Boolean doInBackground() throws Exception {
+                    return hrService.isHRUser(userId);
+                }
+                
+                @Override
+                protected void done() {
+                    try {
+                        boolean isHR = get();
+                        if (isHR) {
+                            new HRDashboard(hrService, payrollService, userId).setVisible(true);
+                        } else {
+                            new EmployeeDashboard(hrService, payrollService, userId).setVisible(true);
+                        }
+                    } catch (Exception e) {
+                        // If check fails, default to employee dashboard
+                        System.err.println("Error checking HR status: " + e.getMessage());
+                        new EmployeeDashboard(hrService, payrollService, userId).setVisible(true);
+                    }
+                }
+            };
+            checkWorker.execute();
         });
     }
 }

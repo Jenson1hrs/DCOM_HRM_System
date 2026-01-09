@@ -32,6 +32,9 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     // Separate map for family members
     private Map<String, List<FamilyMember>> familyMembers = new HashMap<>();
     
+    // HR Users storage: userId -> passwordHash
+    private Map<String, String> hrUsers = new HashMap<>();
+    
     public HRMServiceImpl(ExecutorService threadPool) throws RemoteException {
         super();
         this.threadPool = threadPool;
@@ -49,58 +52,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             employees = new HashMap<>();
             familyMembers = new HashMap<>();
             leaveApplications = new HashMap<>();
+            hrUsers = new HashMap<>();
+            
+            // Initialize default HR user
+            hrUsers.put("hr", PasswordUtil.hashPassword("hr123"));
+            System.out.println("✅ Default HR user 'hr' initialized");
                 
             System.out.println("🧵 HRM Service ready with thread pool support");
             
-            // ===== CREATE EMPLOYEES WITH HASHED PASSWORDS =====
-
-            // Employee 1
-            Employee emp1 = new Employee("John", "Doe", "A1234567");
-            emp1.setEmployeeId("EMP001");
-            emp1.setEmail("john.doe@company.com");
-            emp1.setPhone("012-3456789");
-            emp1.setDepartment("IT");
-            emp1.setPosition("Software Developer");
-            emp1.setJoinDate("2023-01-15");
-            emp1.setMonthlySalary(5000.00);
-            emp1.setBankAccount("1234-5678-9012");
-
-            // Hash password and store
-            String hash1 = PasswordUtil.hashPassword("password123");
-            emp1.setPasswordHash(hash1);
-            System.out.println("EMP001 password hash: " + hash1);
-
-            employees.put("EMP001", emp1);
-            familyMembers.put("EMP001", new ArrayList<>());
-
-            // Add family member
-            FamilyMember spouse1 = new FamilyMember("Sarah Doe", "Spouse", "S1234567");
-            spouse1.setDateOfBirth("1990-05-20");
-            emp1.addFamilyMember(spouse1);
-            familyMembers.get("EMP001").add(spouse1);
-
-            // Employee 2
-            Employee emp2 = new Employee("Jane", "Smith", "B9876543");
-            emp2.setEmployeeId("EMP002");
-            emp2.setEmail("jane.smith@company.com");
-            emp2.setPhone("012-9876543");
-            emp2.setDepartment("HR");
-            emp2.setPosition("HR Manager");
-            emp2.setJoinDate("2022-03-10");
-            emp2.setMonthlySalary(6000.00);
-            emp2.setBankAccount("9876-5432-1098");
-
-            String hash2 = PasswordUtil.hashPassword("password123");
-            emp2.setPasswordHash(hash2);
-            System.out.println("EMP002 password hash: " + hash2);
-
-            employees.put("EMP002", emp2);
-            familyMembers.put("EMP002", new ArrayList<>());
-
-            // Leave applications
-            leaveApplications.put("LV123456789", "EMP001|3|Annual Vacation|Pending");
-            leaveApplications.put("LV987654321", "EMP002|2|Medical Leave|Approved");
-
             // Save data
             try {
                 saveDataToFile();
@@ -109,18 +68,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             }
         }
 
-        // DEBUG: Verify hashes
-        System.out.println("\n🔐 VERIFYING PASSWORD HASHES:");
-        for (Employee emp : employees.values()) {
-            String testHash = PasswordUtil.hashPassword("password123");
-            boolean matches = testHash.equals(emp.getPasswordHash());
-            System.out.println(emp.getEmployeeId() + ": " + 
-                (matches ? "✅ Hash matches" : "❌ Hash mismatch"));
-        }
-
         System.out.println("\n✅ HRM Service ready!");
         System.out.println("   HR Login: hr / hr123");
-        System.out.println("   Employee Login: EMP001 / password123");
         System.out.println("   🔒 Password security: ENABLED");
     }
     
@@ -175,6 +124,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             allData.put("employees", employees);
             allData.put("familyMembers", familyMembers);
             allData.put("leaveApplications", leaveApplications);
+            allData.put("hrUsers", hrUsers);
             
             oos.writeObject(allData);
             System.out.println(" HRM data saved to file: hrm_data.dat");
@@ -197,9 +147,19 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             familyMembers = (Map<String, List<FamilyMember>>) allData.get("familyMembers");
             leaveApplications = (Map<String, String>) allData.get("leaveApplications");
             
+            // Load HR users if available, otherwise initialize default
+            if (allData.containsKey("hrUsers")) {
+                hrUsers = (Map<String, String>) allData.get("hrUsers");
+            } else {
+                hrUsers = new HashMap<>();
+                hrUsers.put("hr", PasswordUtil.hashPassword("hr123"));
+                System.out.println(" Initialized default HR user 'hr'");
+            }
+            
             System.out.println(" Loaded HRM data:");
             System.out.println(" Employees: " + employees.size());
             System.out.println(" Leave Applications: " + leaveApplications.size());
+            System.out.println(" HR Users: " + hrUsers.size());
         }
     }
     
@@ -264,6 +224,58 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
                "   Temporary password: " + plainPassword + "\n" +
                "   ⚠️  Change this password on first login!\n" +
                "   Default salary: RM3000.00";
+    }
+    
+    @Override
+    public String registerHRUser(String hrUserId, String newHRUserId, String password) throws RemoteException {
+        // ===== AUTHORIZATION CHECK - HR USER ONLY =====
+        if (hrUserId == null || !hrUsers.containsKey(hrUserId)) {
+            SecurityLogger.logError(hrUserId != null ? hrUserId : "UNKNOWN", "UNAUTHORIZED_ACCESS", 
+                "Attempted to register HR user without HR privileges");
+            return "❌ Access Denied! Only HR users can register new HR accounts.";
+        }
+        
+        // ===== VALIDATION =====
+        if (newHRUserId == null || newHRUserId.trim().isEmpty()) {
+            SecurityLogger.logError(hrUserId, "INVALID_INPUT", "Empty HR user ID");
+            return "❌ Invalid HR User ID! User ID cannot be empty.";
+        }
+        
+        newHRUserId = newHRUserId.trim().toLowerCase();
+        
+        // Check if HR user already exists
+        if (hrUsers.containsKey(newHRUserId)) {
+            SecurityLogger.logError(hrUserId, "DUPLICATE_USER", "HR user already exists: " + newHRUserId);
+            return "❌ HR User ID already exists! Please choose a different ID.";
+        }
+        
+        // Validate password
+        if (password == null || password.length() < 6) {
+            SecurityLogger.logError(hrUserId, "INVALID_INPUT", "Password too short");
+            return "❌ Invalid password! Password must be at least 6 characters long.";
+        }
+        
+        // Sanitize inputs
+        newHRUserId = InputValidator.sanitizeInput(newHRUserId);
+        
+        // Hash and store password
+        String passwordHash = PasswordUtil.hashPassword(password);
+        hrUsers.put(newHRUserId, passwordHash);
+        
+        // Auto-save
+        try {
+            saveDataToFile();
+        } catch (IOException e) {
+            System.out.println("⚠️  Could not auto-save: " + e.getMessage());
+        }
+        
+        // Log successful registration
+        SecurityLogger.logSensitiveAction(hrUserId, "REGISTER_HR_USER", newHRUserId);
+        
+        return "✅ HR User registered successfully!\n" +
+               "   HR User ID: " + newHRUserId + "\n" +
+               "   Password: " + password + "\n" +
+               "   ⚠️  Save these credentials securely!";
     }
     
     @Override
@@ -581,11 +593,21 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         String clientIP = "RMI-Client"; // In real RMI: getClientHost()
 
         try {
-            // HR login
-            if ("hr".equals(userId) && "hr123".equals(password)) {
-                SecurityLogger.logLogin(userId, true, clientIP);
-                System.out.println(" HR authentication successful");
-                return true;
+            // HR login - check from hrUsers map
+            if (hrUsers.containsKey(userId)) {
+                String storedHash = hrUsers.get(userId);
+                boolean authenticated = PasswordUtil.verifyPassword(password, storedHash);
+                
+                if (authenticated) {
+                    SecurityLogger.logLogin(userId, true, clientIP);
+                    System.out.println(" HR authentication successful: " + userId);
+                    return true;
+                } else {
+                    SecurityLogger.logLogin(userId, false, clientIP);
+                    SecurityLogger.logError(userId, "AUTH_FAILURE", "Invalid HR password");
+                    System.out.println(" HR authentication failed for: " + userId);
+                    return false;
+                }
             }
 
             // Employee login by ID
@@ -643,6 +665,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     }
     
     @Override
+    public boolean isHRUser(String userId) throws RemoteException {
+        if (userId == null) {
+            return false;
+        }
+        return hrUsers.containsKey(userId.toLowerCase());
+    }
+    
+    @Override
     public List<Map<String, String>> getAllLeaveApplications() throws RemoteException {
         List<Map<String, String>> allLeaves = new ArrayList<>();
 
@@ -673,14 +703,31 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
 
     @Override
     public boolean changePassword(String userId, String oldPassword, String newPassword) throws RemoteException {
-        // HR password change - simple implementation
-        if ("hr".equals(userId)) {
-            // For HR, we just check if old password matches "hr123"
-            if (!PasswordUtil.verifyPassword(oldPassword, PasswordUtil.hashPassword("hr123"))) {
+        // HR password change
+        if (hrUsers.containsKey(userId)) {
+            String storedHash = hrUsers.get(userId);
+            // Verify old password
+            if (!PasswordUtil.verifyPassword(oldPassword, storedHash)) {
+                SecurityLogger.logError(userId, "PASSWORD_CHANGE_FAILED", "Invalid old password");
                 System.out.println(" HR password change failed: Old password incorrect");
                 return false;
             }
-            System.out.println(" HR password changed successfully");
+            // Validate new password
+            if (newPassword == null || newPassword.length() < 6) {
+                SecurityLogger.logError(userId, "PASSWORD_CHANGE_FAILED", "New password too short");
+                return false;
+            }
+            // Update password
+            String newHash = PasswordUtil.hashPassword(newPassword);
+            hrUsers.put(userId, newHash);
+            // Save to file
+            try {
+                saveDataToFile();
+            } catch (IOException e) {
+                System.out.println("⚠️  Could not auto-save password change: " + e.getMessage());
+            }
+            SecurityLogger.logSensitiveAction(userId, "PASSWORD_CHANGED", "HR password changed");
+            System.out.println(" HR password changed successfully for: " + userId);
             return true;
         }
 
@@ -722,6 +769,50 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
 
         String[] parts = currentStatus.split("\\|");
         if (parts.length >= 4) {
+            String employeeId = parts[0];
+            int leaveDays = Integer.parseInt(parts[1]);
+            String originalStatus = (parts.length > 3) ? parts[3] : "";
+            
+            // Check if status is being changed to "Rejected"
+            boolean isRejected = status.contains("Rejected") || status.contains("rejected");
+            boolean wasPending = originalStatus.contains("Pending") || originalStatus.contains("pending");
+            boolean wasApproved = originalStatus.contains("Approved") || originalStatus.contains("approved");
+            
+            // If rejecting a leave (whether pending or approved), remove it from payroll and restore leave balance
+            if (isRejected && (wasPending || wasApproved)) {
+                Employee emp = employees.get(employeeId);
+                if (emp != null) {
+                    // Determine if it was paid or unpaid leave
+                    // Unpaid leaves have format: "employeeId|days|reason|Unpaid|Pending"
+                    // Paid leaves have format: "employeeId|days|reason|Pending"
+                    boolean isPaidLeave = !currentStatus.contains("|Unpaid|");
+                    
+                    // Remove leave from payroll
+                    try {
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
+                        String currentMonth = sdf.format(new Date());
+                        
+                        PayrollService payrollService = (PayrollService) 
+                            Naming.lookup("rmi://localhost:1098/PayrollService");
+                        
+                        // Remove leave from salary calculation
+                        payrollService.removeLeaveFromSalary(employeeId, currentMonth, leaveDays, isPaidLeave);
+                        
+                        // Restore leave balance if it was a paid leave (from leave balance)
+                        if (isPaidLeave) {
+                            emp.setLeaveBalance(emp.getLeaveBalance() + leaveDays);
+                            System.out.println("✅ Restored " + leaveDays + " days to leave balance for " + employeeId);
+                        }
+                        
+                        System.out.println("✅ Removed " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
+                                          " leave(s) from payroll for " + employeeId);
+                        
+                    } catch (Exception e) {
+                        System.out.println("⚠️  Could not remove leave from payroll: " + e.getMessage());
+                    }
+                }
+            }
+            
             // Reconstruct with new status
             String newStatus = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + status + " by " + processedBy;
             leaveApplications.put(applicationId, newStatus);

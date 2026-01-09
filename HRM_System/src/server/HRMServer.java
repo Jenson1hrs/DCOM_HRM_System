@@ -55,7 +55,6 @@ public class HRMServer {
             
             System.out.println("\n Sample Logins:");
             System.out.println("  HR Staff: hr / hr123");
-            System.out.println("  Employee: EMP001 / password123");
             
             System.out.println("\n Keep this window open while clients are running!");
             

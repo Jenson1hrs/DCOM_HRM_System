@@ -11,13 +11,15 @@ import java.util.Date;
 
 public class SecurityLogsPanel extends JPanel {
     private HRMService hrService;
+    private String userId;
     private JTable logsTable;
     private DefaultTableModel tableModel;
     private JComboBox<String> filterCombo;
     private JTextField searchField;
     
-    public SecurityLogsPanel(HRMService hrService) {
+    public SecurityLogsPanel(HRMService hrService, String userId) {
         this.hrService = hrService;
+        this.userId = userId;
         setLayout(new BorderLayout(20, 20));
         setBackground(Color.WHITE);
         setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
@@ -52,12 +54,17 @@ public class SecurityLogsPanel extends JPanel {
         styleButton(refreshBtn, new Color(149, 165, 166));
         refreshBtn.addActionListener(e -> loadSecurityLogs());
         
+        JButton registerHRBtn = new JButton("Register HR User");
+        styleButton(registerHRBtn, new Color(155, 89, 182));
+        registerHRBtn.addActionListener(e -> showRegisterHRDialog());
+        
         actionPanel.add(new JLabel("Search:"));
         actionPanel.add(searchField);
         actionPanel.add(searchBtn);
         actionPanel.add(new JLabel("Filter:"));
         actionPanel.add(filterCombo);
         actionPanel.add(refreshBtn);
+        actionPanel.add(registerHRBtn);
         
         topPanel.add(titleLabel, BorderLayout.WEST);
         topPanel.add(actionPanel, BorderLayout. EAST);
@@ -402,6 +409,219 @@ public class SecurityLogsPanel extends JPanel {
             }
         };
         worker.execute();
+    }
+    
+    private void showRegisterHRDialog() {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Register New HR User", true);
+        dialog.setSize(450, 300);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setBackground(Color.WHITE);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 8, 8, 8);
+
+        // Title
+        JLabel titleLabel = new JLabel("Register New HR User");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        panel.add(titleLabel, gbc);
+
+        gbc.gridwidth = 1;
+
+        JTextField userIdField = new JTextField(20);
+        JPasswordField passwordField = new JPasswordField(20);
+
+        gbc.gridx = 0; gbc.gridy = 1;
+        panel.add(new JLabel("HR User ID:"), gbc);
+        gbc.gridx = 1;
+        panel.add(userIdField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2;
+        panel.add(new JLabel("Password:"), gbc);
+        gbc.gridx = 1;
+        panel.add(passwordField, gbc);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        buttonPanel.setBackground(Color.WHITE);
+        JButton registerBtn = new JButton("Register");
+        JButton cancelBtn = new JButton("Cancel");
+
+        styleButton(registerBtn, new Color(155, 89, 182));
+        styleButton(cancelBtn, new Color(149, 165, 166));
+
+        registerBtn.addActionListener(e -> {
+            String newHRUserId = userIdField.getText().trim();
+            String password = new String(passwordField.getPassword());
+
+            if (newHRUserId.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, 
+                    "All fields are required!", 
+                    "Validation Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (password.length() < 6) {
+                JOptionPane.showMessageDialog(dialog, 
+                    "Password must be at least 6 characters long!", 
+                    "Validation Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            registerBtn.setEnabled(false);
+            registerBtn.setText("Registering...");
+
+            SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
+                @Override
+                protected String doInBackground() throws Exception {
+                    return hrService.registerHRUser(userId, newHRUserId, password);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        String result = get();
+                        dialog.dispose();
+
+                        if (result.contains("❌")) {
+                            JOptionPane.showMessageDialog(SecurityLogsPanel.this,
+                                result,
+                                "Registration Failed",
+                                JOptionPane.ERROR_MESSAGE);
+                        } else {
+                            // Show success dialog with credentials
+                            showHRCredentialsDialog(newHRUserId, password, result);
+                        }
+                        registerBtn.setEnabled(true);
+                        registerBtn.setText("Register");
+                    } catch (Exception ex) {
+                        dialog.dispose();
+                        JOptionPane.showMessageDialog(SecurityLogsPanel.this, 
+                            "Error: " + ex.getMessage(), 
+                            "Error", 
+                            JOptionPane.ERROR_MESSAGE);
+                        registerBtn.setEnabled(true);
+                        registerBtn.setText("Register");
+                    }
+                }
+            };
+            worker.execute();
+        });
+
+        cancelBtn.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(registerBtn);
+        buttonPanel.add(cancelBtn);
+
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        panel.add(buttonPanel, gbc);
+
+        dialog.add(panel);
+        dialog.setVisible(true);
+    }
+    
+    private void showHRCredentialsDialog(String hrUserId, String password, String serverResponse) {
+        JDialog credDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), 
+            "HR User Registered Successfully", true);
+        credDialog.setSize(500, 350);
+        credDialog.setLocationRelativeTo(this);
+        
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        mainPanel.setBackground(Color.WHITE);
+        
+        JLabel successIcon = new JLabel("✓", SwingConstants.CENTER);
+        successIcon.setFont(new Font("Arial", Font.BOLD, 72));
+        successIcon.setForeground(new Color(155, 89, 182));
+        successIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(successIcon);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        
+        JLabel titleLabel = new JLabel("HR User Registered Successfully!");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(titleLabel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        
+        JPanel credPanel = new JPanel(new GridBagLayout());
+        credPanel.setBackground(new Color(236, 240, 241));
+        credPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(155, 89, 182), 2),
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        ));
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(5, 10, 5, 10);
+        
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel userIdLabel = new JLabel("HR User ID:");
+        userIdLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        credPanel.add(userIdLabel, gbc);
+        
+        gbc.gridx = 1;
+        JTextField userIdField = new JTextField(hrUserId, 20);
+        userIdField.setEditable(false);
+        userIdField.setFont(new Font("Arial", Font.BOLD, 16));
+        userIdField.setBackground(Color.WHITE);
+        userIdField.setForeground(new Color(52, 73, 94));
+        credPanel.add(userIdField, gbc);
+        
+        gbc.gridx = 0; gbc.gridy = 1;
+        JLabel passLabel = new JLabel("Password:");
+        passLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        credPanel.add(passLabel, gbc);
+        
+        gbc.gridx = 1;
+        JTextField passField = new JTextField(password, 20);
+        passField.setEditable(false);
+        passField.setFont(new Font("Arial", Font.BOLD, 16));
+        passField.setBackground(Color.WHITE);
+        passField.setForeground(new Color(52, 73, 94));
+        credPanel.add(passField, gbc);
+        
+        mainPanel.add(credPanel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 15)));
+        
+        JLabel warningLabel = new JLabel("<html><center>⚠️ IMPORTANT: Save these credentials! <br>The password cannot be retrieved later.</center></html>");
+        warningLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        warningLabel.setForeground(new Color(231, 76, 60));
+        warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(warningLabel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 15)));
+        
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        buttonPanel.setBackground(Color.WHITE);
+        
+        JButton copyBtn = new JButton("Copy Credentials");
+        styleButton(copyBtn, new Color(155, 89, 182));
+        copyBtn.addActionListener(e -> {
+            String credentials = "HR User ID: " + hrUserId + "\nPassword: " + password;
+            java.awt.datatransfer.StringSelection stringSelection = new java.awt.datatransfer.StringSelection(credentials);
+            java.awt.datatransfer.Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            clipboard.setContents(stringSelection, null);
+            JOptionPane.showMessageDialog(credDialog, 
+                "Credentials copied to clipboard!", 
+                "Copied", 
+                JOptionPane.INFORMATION_MESSAGE);
+        });
+        
+        JButton closeBtn = new JButton("Close");
+        styleButton(closeBtn, new Color(149, 165, 166));
+        closeBtn.addActionListener(e -> credDialog.dispose());
+        
+        buttonPanel.add(copyBtn);
+        buttonPanel.add(closeBtn);
+        
+        mainPanel.add(buttonPanel);
+        
+        credDialog.add(mainPanel);
+        credDialog.setVisible(true);
     }
     
     private void styleButton(JButton button, Color color) {

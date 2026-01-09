@@ -50,6 +50,19 @@ public class SalaryRecord implements Serializable {
     public int getWorkingDays() { return workingDays; }
     public int getPaidLeaveDays() { return paidLeaveDays; }
     public int getUnpaidLeaveDays() { return unpaidLeaveDays; }  // NEW GETTER
+    public int getTotalLeaves() { return paidLeaveDays + unpaidLeaveDays; }  // Total leaves in month
+    
+    // Get display values based on policy: first 4 are paid, rest are unpaid
+    public int getDisplayPaidLeaveDays() {
+        int total = getTotalLeaves();
+        return Math.min(4, total);  // First 4 are paid
+    }
+    
+    public int getDisplayUnpaidLeaveDays() {
+        int total = getTotalLeaves();
+        return Math.max(0, total - 4);  // From 5th onwards are unpaid
+    }
+    
     public double getDeductions() { return deductions; }
     public double getNetSalary() { return netSalary; }
     public String getPaymentStatus() { return paymentStatus; }
@@ -82,18 +95,22 @@ public class SalaryRecord implements Serializable {
     
     // ===== CALCULATION LOGIC =====
     private void calculateNetSalary() {
-        double dailyRate = baseSalary / 22; // Assume 22 working days/month
-
-        // Calculate total absence days (working days less than 22)
-        int totalAbsence = 22 - workingDays;
-
-        // Check if we have enough paid leave to cover absence
-        int paidCoverage = Math.min(paidLeaveDays, totalAbsence);
-        int unpaidAbsence = Math.max(0, totalAbsence - paidCoverage);
-
-        // Only deduct for UNPAID absence
-        this.deductions = unpaidAbsence * dailyRate;
-        this.netSalary = baseSalary - deductions;
+        // Calculate total leaves taken in the month
+        int totalLeaves = paidLeaveDays + unpaidLeaveDays;
+        
+        // First 4 leaves are paid (no deduction)
+        // From the 5th leave onwards, each leave deducts 50
+        if (totalLeaves <= 4) {
+            // First 4 leaves: no deduction
+            this.deductions = 0;
+        } else {
+            // From 5th leave onwards: deduct 50 per leave
+            int unpaidLeavesCount = totalLeaves - 4;
+            this.deductions = unpaidLeavesCount * 50.0;
+        }
+        
+        // Calculate net salary (ensure it doesn't go below 0)
+        this.netSalary = Math.max(0, baseSalary - deductions);
     }
     
     // ===== HELPER METHODS =====
@@ -108,6 +125,19 @@ public class SalaryRecord implements Serializable {
         
         // Reduce working days by leave taken
         this.workingDays = Math.max(0, this.workingDays - days);
+        calculateNetSalary();
+    }
+    
+    // Remove leave days (for HR system integration - when leave is rejected)
+    public void removeLeave(int days, boolean isPaid) {
+        if (isPaid) {
+            this.paidLeaveDays = Math.max(0, this.paidLeaveDays - days);
+        } else {
+            this.unpaidLeaveDays = Math.max(0, this.unpaidLeaveDays - days);
+        }
+        
+        // Restore working days
+        this.workingDays = Math.min(22, this.workingDays + days);
         calculateNetSalary();
     }
     
@@ -129,9 +159,10 @@ public class SalaryRecord implements Serializable {
     
     // Get summary for display
     public String getSalarySummary() {
+        int totalLeaves = getTotalLeaves();
         return String.format(
-            "Base: RM%.2f | Working Days: %d/22 | Paid Leave: %d days | Unpaid Leave: %d days | Net: RM%.2f",
-            baseSalary, workingDays, paidLeaveDays, unpaidLeaveDays, netSalary
+            "Base: RM%.2f | Working Days: %d/22 | Total Leaves: %d days (Paid: %d, Unpaid: %d) | Deductions: RM%.2f | Net: RM%.2f",
+            baseSalary, workingDays, totalLeaves, paidLeaveDays, unpaidLeaveDays, deductions, netSalary
         );
     }
     
