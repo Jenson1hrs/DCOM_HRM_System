@@ -1,0 +1,12 @@
+/HRM_System/nbproject/private/
+/HRM_System/build/
+/HRM_System/dist/
+
+/HRM_System_V2/nbproject/private/
+/HRM_System_V2/build/
+
+/HRM_System/hrm_data.dat
+/HRM_System/security_audit.log
+
+*.log
+*.dat
