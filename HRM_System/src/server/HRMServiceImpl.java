@@ -455,27 +455,13 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         Employee emp = employees.get(employeeId);
         if (emp == null) return " Employee not found!";
         
+        // Check if balance is sufficient, but DON'T deduct yet - wait for HR approval
         if (emp.getLeaveBalance() >= days) {
             String appId = "LV" + System.currentTimeMillis();
             leaveApplications.put(appId, employeeId + "|" + days + "|" + reason + "|Pending");
-            emp.setLeaveBalance(emp.getLeaveBalance() - days);
             
-            // SYNC WITH PAYROLL - Assume all leave is PAID (using leave balance)
-            try {
-                // Get current month
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
-                String currentMonth = sdf.format(new Date());
-                
-                // Connect to payroll service
-                PayrollService payrollService = (PayrollService) 
-                    Naming.lookup("rmi://localhost:1098/PayrollService");
-                
-                // Sync leave - using leave balance means it's PAID leave
-                payrollService.syncLeaveWithSalary(employeeId, currentMonth, days, true);
-                
-            } catch (Exception e) {
-                System.out.println(" Could not sync leave with payroll: " + e.getMessage());
-            }
+            // DO NOT deduct balance or sync with payroll here
+            // Balance will be deducted only when HR approves the leave
             
             // Auto-save
             try {
@@ -487,8 +473,9 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             return "Leave application submitted!\n" +
                    "   Application ID: " + appId + "\n" +
                    "   Days: " + days + "\n" +
-                   "   New Balance: " + emp.getLeaveBalance() + " days\n" +
-                   "   Note: Leave will affect salary calculation for current month.";
+                   "   Current Balance: " + emp.getLeaveBalance() + " days\n" +
+                   "   Status: Pending HR approval\n" +
+                   "   Note: Balance will be deducted only after HR approval.";
         }
         return "Insufficient leave balance!\n" +
                "   Requested: " + days + " days\n" +
@@ -504,19 +491,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         String appId = "ULV" + System.currentTimeMillis(); // ULV = Unpaid Leave
         leaveApplications.put(appId, employeeId + "|" + days + "|" + reason + "|Unpaid|Pending");
         
-        // SYNC WITH PAYROLL - false means UNPAID leave
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
-            String currentMonth = sdf.format(new Date());
-            
-            PayrollService payrollService = (PayrollService) 
-                Naming.lookup("rmi://localhost:1098/PayrollService");
-            
-            payrollService.syncLeaveWithSalary(employeeId, currentMonth, days, false);
-            
-        } catch (Exception e) {
-            System.out.println("  Could not sync unpaid leave with payroll: " + e.getMessage());
-        }
+        // DO NOT sync with payroll here - wait for HR approval
+        // Payroll will be synced only when HR approves the leave
         
         // Auto-save
         try {
@@ -528,7 +504,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         return " Unpaid leave application submitted!\n" +
                "   Application ID: " + appId + "\n" +
                "   Days: " + days + "\n" +
-               "   Note: Unpaid leave will deduct from salary.";
+               "   Status: Pending HR approval\n" +
+               "   Note: Unpaid leave will deduct from salary only after HR approval.";
     }
     
     // ===== FAMILY MEMBER METHODS =====
@@ -773,45 +750,79 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             int leaveDays = Integer.parseInt(parts[1]);
             String originalStatus = (parts.length > 3) ? parts[3] : "";
             
-            // Check if status is being changed to "Rejected"
+            // Determine if it was paid or unpaid leave
+            // Unpaid leaves have format: "employeeId|days|reason|Unpaid|Pending"
+            // Paid leaves have format: "employeeId|days|reason|Pending"
+            boolean isPaidLeave = !currentStatus.contains("|Unpaid|");
+            
+            boolean isApproved = status.contains("Approved") || status.contains("approved");
             boolean isRejected = status.contains("Rejected") || status.contains("rejected");
             boolean wasPending = originalStatus.contains("Pending") || originalStatus.contains("pending");
             boolean wasApproved = originalStatus.contains("Approved") || originalStatus.contains("approved");
             
-            // If rejecting a leave (whether pending or approved), remove it from payroll and restore leave balance
-            if (isRejected && (wasPending || wasApproved)) {
-                Employee emp = employees.get(employeeId);
-                if (emp != null) {
-                    // Determine if it was paid or unpaid leave
-                    // Unpaid leaves have format: "employeeId|days|reason|Unpaid|Pending"
-                    // Paid leaves have format: "employeeId|days|reason|Pending"
-                    boolean isPaidLeave = !currentStatus.contains("|Unpaid|");
+            Employee emp = employees.get(employeeId);
+            
+            // If APPROVING a pending leave: deduct balance (if paid) and sync with payroll
+            if (isApproved && wasPending && emp != null) {
+                // For paid leave, check if balance is still sufficient
+                if (isPaidLeave && emp.getLeaveBalance() < leaveDays) {
+                    System.out.println("⚠️  Cannot approve leave: Insufficient balance for " + employeeId);
+                    return false; // Cannot approve if balance is insufficient
+                }
+                
+                // Deduct leave balance only for paid leave
+                if (isPaidLeave) {
+                    emp.setLeaveBalance(emp.getLeaveBalance() - leaveDays);
+                    System.out.println("✅ Deducted " + leaveDays + " days from leave balance for " + employeeId);
+                }
+                
+                // Sync with payroll (for both paid and unpaid leave)
+                try {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
+                    String currentMonth = sdf.format(new Date());
                     
-                    // Remove leave from payroll
-                    try {
-                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
-                        String currentMonth = sdf.format(new Date());
-                        
-                        PayrollService payrollService = (PayrollService) 
-                            Naming.lookup("rmi://localhost:1098/PayrollService");
-                        
-                        // Remove leave from salary calculation
-                        payrollService.removeLeaveFromSalary(employeeId, currentMonth, leaveDays, isPaidLeave);
-                        
-                        // Restore leave balance if it was a paid leave (from leave balance)
-                        if (isPaidLeave) {
-                            emp.setLeaveBalance(emp.getLeaveBalance() + leaveDays);
-                            System.out.println("✅ Restored " + leaveDays + " days to leave balance for " + employeeId);
-                        }
-                        
-                        System.out.println("✅ Removed " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
-                                          " leave(s) from payroll for " + employeeId);
-                        
-                    } catch (Exception e) {
-                        System.out.println("⚠️  Could not remove leave from payroll: " + e.getMessage());
-                    }
+                    PayrollService payrollService = (PayrollService) 
+                        Naming.lookup("rmi://localhost:1098/PayrollService");
+                    
+                    // Sync leave with payroll
+                    payrollService.syncLeaveWithSalary(employeeId, currentMonth, leaveDays, isPaidLeave);
+                    System.out.println("✅ Synced " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
+                                      " leave(s) with payroll for " + employeeId);
+                    
+                } catch (Exception e) {
+                    System.out.println("⚠️  Could not sync leave with payroll: " + e.getMessage());
                 }
             }
+            
+            // If REJECTING an APPROVED leave: restore balance and remove from payroll
+            // (This handles the case where HR might reject an already-approved leave)
+            if (isRejected && wasApproved && emp != null) {
+                try {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM");
+                    String currentMonth = sdf.format(new Date());
+                    
+                    PayrollService payrollService = (PayrollService) 
+                        Naming.lookup("rmi://localhost:1098/PayrollService");
+                    
+                    // Remove leave from salary calculation
+                    payrollService.removeLeaveFromSalary(employeeId, currentMonth, leaveDays, isPaidLeave);
+                    
+                    // Restore leave balance if it was a paid leave
+                    if (isPaidLeave) {
+                        emp.setLeaveBalance(emp.getLeaveBalance() + leaveDays);
+                        System.out.println("✅ Restored " + leaveDays + " days to leave balance for " + employeeId);
+                    }
+                    
+                    System.out.println("✅ Removed " + leaveDays + " " + (isPaidLeave ? "paid" : "unpaid") + 
+                                      " leave(s) from payroll for " + employeeId);
+                    
+                } catch (Exception e) {
+                    System.out.println("⚠️  Could not remove leave from payroll: " + e.getMessage());
+                }
+            }
+            
+            // If REJECTING a PENDING leave: do nothing (balance was never deducted)
+            // This is the correct behavior - no changes needed
             
             // Reconstruct with new status
             String newStatus = parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + status + " by " + processedBy;
