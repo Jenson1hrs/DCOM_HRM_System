@@ -81,25 +81,8 @@ public class ReportsPanel extends JPanel {
         reportTypeCombo.addActionListener(e -> toggleEmployeeSelection());
         controlPanel.add(reportTypeCombo, gbc);
 
-        // Year Selection
-        gbc.gridx = 0; gbc.gridy = 1;
-        JLabel yearLabel = new JLabel("Year:");
-        yearLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        controlPanel.add(yearLabel, gbc);
-
-        gbc.gridx = 1;
-        int currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
-        String[] years = new String[10];
-        for (int i = 0; i < 10; i++) {
-            years[i] = String.valueOf(currentYear - i);
-        }
-        yearCombo = new JComboBox<>(years);
-        yearCombo.setFont(new Font("Arial", Font.PLAIN, 14));
-        yearCombo.setPreferredSize(new Dimension(350, 35));
-        controlPanel.add(yearCombo, gbc);
-
         // Employee Selection Panel
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 2;
         employeeSelectionPanel = new JPanel(new BorderLayout(10, 10));
         employeeSelectionPanel.setBackground(Color.WHITE);
         employeeSelectionPanel.setVisible(false);
@@ -244,8 +227,7 @@ public class ReportsPanel extends JPanel {
     
     private void generateReport() {
         String reportType = (String) reportTypeCombo.getSelectedItem();
-        String year = (String) yearCombo.getSelectedItem();
-        
+        String year = String.valueOf(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR));
         // Validate employee selection if needed
         if ("Specific Employee Report".equals(reportType)) {
             if (employeeCombo.getSelectedItem() == null) {
